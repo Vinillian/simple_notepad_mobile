@@ -27,12 +27,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   Future<void> _createCategory() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Исправлено: используем toARGB32() вместо устаревшего value
+    final colorHex =
+        '#${_selectedColor.toARGB32().toRadixString(16).substring(2, 8).toUpperCase()}';
+
     final newCategory = Category(
       id: 'cat_${DateTime.now().millisecondsSinceEpoch}',
       name: _nameController.text.trim(),
-      color:
-          '#${_selectedColor.value.toRadixString(16).substring(2, 8).toUpperCase()}',
-      custom: 1, // ← изменено: теперь int, 1 означает true
+      color: colorHex,
+      custom: 1,
     );
 
     try {
@@ -226,7 +229,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                           ),
                         ),
                         title: Text(cat.name),
-                        // исправлено: сравниваем с 1
                         subtitle: Text(
                             cat.custom == 1 ? 'Пользовательская' : 'Системная'),
                         trailing: cat.custom == 1

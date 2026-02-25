@@ -54,8 +54,8 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
       createdTimestamp:
           widget.note?.createdTimestamp ?? now.millisecondsSinceEpoch,
       updatedTimestamp: now.millisecondsSinceEpoch,
-      expanded: 0, // изменено: false → 0
-      editMode: 0, // изменено: false → 0
+      expanded: 0,
+      editMode: 0,
       type: _detectType(_contentController.text),
       metadata: null,
     );
@@ -72,9 +72,12 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
       }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка сохранения: $e')),
-      );
+      if (mounted) {
+        // добавлена проверка mounted
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка сохранения: $e')),
+        );
+      }
     }
   }
 
