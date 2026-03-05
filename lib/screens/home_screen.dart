@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// import '../models/category.dart'; // убран неиспользуемый импорт
 import '../providers/notes_provider.dart';
 import '../providers/categories_provider.dart';
 import '../providers/settings_provider.dart';
@@ -8,7 +7,7 @@ import '../widgets/note_card.dart';
 import '../widgets/loading_indicator.dart';
 import 'note_edit_screen.dart';
 import 'categories_screen.dart';
-import 'backup_screen.dart';
+import 'backup_screen.dart'; // Этот импорт должен быть
 import 'initial_setup_screen.dart';
 import '../services/local_category_service.dart';
 
@@ -46,7 +45,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       notesNotifierProvider(category: selectedCategory, sort: sortOrder),
     );
     final categoriesAsync = ref.watch(categoriesNotifierProvider);
-    // final settingsAsync = ref.watch(settingsNotifierProvider); // убрана неиспользуемая переменная
 
     return Scaffold(
       appBar: AppBar(

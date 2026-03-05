@@ -45,7 +45,8 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
 
     final now = DateTime.now();
     final note = Note(
-      id: widget.note?.id ?? now.millisecondsSinceEpoch,
+      // id: double, если новая заметка – используем миллисекунды как double
+      id: widget.note?.id ?? now.millisecondsSinceEpoch.toDouble(),
       title: _titleController.text.isEmpty ? null : _titleController.text,
       content: _contentController.text,
       categoryId: _selectedCategoryId!,
@@ -119,7 +120,6 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
               categoriesAsync.when(
                 data: (categories) {
                   return DropdownButtonFormField<String>(
-                    // value заменён на initialValue
                     initialValue: _selectedCategoryId,
                     decoration: const InputDecoration(
                       labelText: 'Категория',

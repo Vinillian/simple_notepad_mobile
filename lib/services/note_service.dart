@@ -15,7 +15,8 @@ class NoteService {
     return (data as List).map((json) => Note.fromJson(json)).toList();
   }
 
-  Future<Note> getNoteById(int id) async {
+  Future<Note> getNoteById(double id) async {
+    // double
     final data = await _apiClient.get('/notes/$id');
     return Note.fromJson(data);
   }
@@ -24,11 +25,13 @@ class NoteService {
     await _apiClient.post('/notes', note.toJson());
   }
 
-  Future<void> updateNote(int id, Note note) async {
+  Future<void> updateNote(double id, Note note) async {
+    // double
     await _apiClient.put('/notes/$id', note.toJson());
   }
 
-  Future<void> deleteNote(int id) async {
+  Future<void> deleteNote(double id) async {
+    // double
     await _apiClient.delete('/notes/$id');
   }
 }

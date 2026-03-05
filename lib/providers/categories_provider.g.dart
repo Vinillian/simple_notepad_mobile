@@ -6,8 +6,25 @@ part of 'categories_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+String _$categoryNotesCountHash() =>
+    r'2590d5a7d6d01bf6ada9a5495518cf5f5b8ba3db';
+
+/// See also [CategoryNotesCount].
+@ProviderFor(CategoryNotesCount)
+final categoryNotesCountProvider = AutoDisposeAsyncNotifierProvider<
+    CategoryNotesCount, Map<String, int>>.internal(
+  CategoryNotesCount.new,
+  name: r'categoryNotesCountProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$categoryNotesCountHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$CategoryNotesCount = AutoDisposeAsyncNotifier<Map<String, int>>;
 String _$categoriesNotifierHash() =>
-    r'38d40ab57df8ccd44ab842714815383a3a0a7162';
+    r'b5b10760c7f9d346eb8eeb9fdebec69a9e645940';
 
 /// See also [CategoriesNotifier].
 @ProviderFor(CategoriesNotifier)

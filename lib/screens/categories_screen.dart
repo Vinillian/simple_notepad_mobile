@@ -27,7 +27,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   Future<void> _createCategory() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Исправлено: используем toARGB32() вместо устаревшего value
     final colorHex =
         '#${_selectedColor.toARGB32().toRadixString(16).substring(2, 8).toUpperCase()}';
 
@@ -68,7 +67,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       return;
     }
 
-    // Получаем заметки для этой категории (используем провайдер с фильтром)
     final notes = await ref
         .read(notesNotifierProvider(category: category.id, sort: 'new').future);
 
@@ -96,11 +94,10 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       );
       if (confirm != true) return;
 
-      // Удаляем все заметки этой категории
       for (final note in notes) {
         await ref
             .read(notesNotifierProvider(category: category.id).notifier)
-            .deleteNote(note.id);
+            .deleteNote(note.id); // note.id теперь double
       }
     }
 

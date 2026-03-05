@@ -6,7 +6,6 @@ import '../providers/categories_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/backup_service.dart';
 import '../utils/merge_helper.dart';
-// import '../widgets/loading_indicator.dart'; // убран неиспользуемый импорт
 
 class BackupScreen extends ConsumerWidget {
   const BackupScreen({super.key});
@@ -85,20 +84,25 @@ class BackupScreen extends ConsumerWidget {
       final backup = await BackupService.pickAndParseBackup();
       if (backup == null) return;
 
+      // Получаем текущие данные
       final currentCategories =
           await ref.read(categoriesNotifierProvider.future);
       final currentNotes = await ref
           .read(notesNotifierProvider(category: null, sort: 'new').future);
       final currentSettings = await ref.read(settingsNotifierProvider.future);
 
+      // Находим новые категории
       final newCategories = MergeHelper.findNewCategories(
         current: currentCategories,
         imported: backup.categories,
       );
+
+      // Находим новые заметки
       final newNotes = MergeHelper.findNewNotes(
         current: currentNotes,
         imported: backup.notes,
       );
+
       final settingsDiff =
           MergeHelper.isSettingsDifferent(currentSettings, backup.settings);
 
@@ -150,10 +154,12 @@ class BackupScreen extends ConsumerWidget {
 
       if (confirm != true) return;
 
+      // Добавляем новые категории
       for (final cat in newCategories) {
         await ref.read(categoriesNotifierProvider.notifier).addCategory(cat);
       }
 
+      // Добавляем новые заметки
       for (final note in newNotes) {
         await ref
             .read(notesNotifierProvider(category: note.categoryId).notifier)
@@ -168,8 +174,13 @@ class BackupScreen extends ConsumerWidget {
 
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Импорт завершён')),
+        SnackBar(
+          content: Text(
+              'Импорт завершён. Добавлено: ${newCategories.length} категорий, ${newNotes.length} заметок.'),
+        ),
       );
+
+      // Обновляем все провайдеры
       ref.invalidate(notesNotifierProvider);
       ref.invalidate(categoriesNotifierProvider);
       ref.invalidate(settingsNotifierProvider);

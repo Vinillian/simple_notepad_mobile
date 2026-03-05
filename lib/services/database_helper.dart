@@ -37,10 +37,10 @@ class DatabaseHelper {
       )
     ''');
 
-    // Таблица заметок
+    // Таблица заметок – id теперь REAL (для хранения double)
     await db.execute('''
       CREATE TABLE notes(
-        id INTEGER PRIMARY KEY,
+        id REAL PRIMARY KEY,  -- изменено с INTEGER на REAL
         title TEXT,
         content TEXT NOT NULL,
         category_id TEXT NOT NULL,
@@ -54,7 +54,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // Таблица настроек (только одна запись)
+    // Таблица настроек
     await db.execute('''
       CREATE TABLE settings(
         id INTEGER PRIMARY KEY DEFAULT 1,

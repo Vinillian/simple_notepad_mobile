@@ -4,7 +4,7 @@ part 'note.g.dart';
 
 @JsonSerializable()
 class Note {
-  final int id;
+  final double id; // изменено с int на double
   final String? title;
   final String content;
   @JsonKey(name: 'category_id')
@@ -14,9 +14,9 @@ class Note {
   final int createdTimestamp;
   @JsonKey(name: 'updated_timestamp')
   final int updatedTimestamp;
-  final int expanded; // изменено с bool на int
+  final int expanded;
   @JsonKey(name: 'edit_mode')
-  final int editMode; // изменено с bool на int
+  final int editMode;
   final String type;
   final Map<String, dynamic>? metadata;
 

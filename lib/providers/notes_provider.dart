@@ -3,6 +3,7 @@ import '../models/note.dart';
 import '../services/local_note_service.dart';
 import '../services/note_service.dart';
 import '../utils/merge_helper.dart';
+import 'categories_provider.dart';
 
 part 'notes_provider.g.dart';
 
@@ -30,31 +31,34 @@ class NotesNotifier extends _$NotesNotifier {
   Future<void> addNote(Note note) async {
     await _localService.createNote(note);
     await refresh(category: category, sort: sort);
+    ref.invalidate(categoryNotesCountProvider);
     _syncNoteToRemote(note);
   }
 
-  Future<void> updateNote(int id, Note note) async {
+  Future<void> updateNote(double id, Note note) async {
+    // double
     await _localService.updateNote(note);
     await refresh(category: category, sort: sort);
+    ref.invalidate(categoryNotesCountProvider);
     _updateNoteRemote(note);
   }
 
-  Future<void> deleteNote(int id) async {
+  Future<void> deleteNote(double id) async {
+    // double
     await _localService.deleteNote(id);
     await refresh(category: category, sort: sort);
+    ref.invalidate(categoryNotesCountProvider);
     _deleteNoteRemote(id);
   }
 
-  // Синхронизация с сервером
   Future<void> syncWithRemote() async {
-    final currentCategory = category; // убраны лишние this.
-    final currentSort = sort; // убраны лишние this.
+    final currentCategory = category;
+    final currentSort = sort;
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final localNotes = await _localService.getNotes();
       final remoteNotes = await _remoteService.getNotes();
 
-      // Заметки, которые есть локально, но нет на сервере
       final toAddToRemote = MergeHelper.findNewNotes(
         current: remoteNotes,
         imported: localNotes,
@@ -63,7 +67,6 @@ class NotesNotifier extends _$NotesNotifier {
         await _remoteService.createNote(note);
       }
 
-      // Заметки, которые есть на сервере, но нет локально
       final toAddToLocal = MergeHelper.findNewNotes(
         current: localNotes,
         imported: remoteNotes,
@@ -72,7 +75,8 @@ class NotesNotifier extends _$NotesNotifier {
         await _localService.insertAll(toAddToLocal);
       }
 
-      // Возвращаем обновлённые локальные заметки с учётом фильтра
+      ref.invalidate(categoryNotesCountProvider);
+
       return await _localService.getNotes(
           category: currentCategory, sort: currentSort);
     });
@@ -84,24 +88,19 @@ class NotesNotifier extends _$NotesNotifier {
       if (!remoteNotes.any((n) => n.id == note.id)) {
         await _remoteService.createNote(note);
       }
-    } catch (e) {
-      // Ошибка сети - игнорируем, синхронизируем позже
-    }
+    } catch (e) {}
   }
 
   Future<void> _updateNoteRemote(Note note) async {
     try {
       await _remoteService.updateNote(note.id, note);
-    } catch (e) {
-      // Ошибка сети - игнорируем
-    }
+    } catch (e) {}
   }
 
-  Future<void> _deleteNoteRemote(int id) async {
+  Future<void> _deleteNoteRemote(double id) async {
+    // double
     try {
       await _remoteService.deleteNote(id);
-    } catch (e) {
-      // Ошибка сети - игнорируем
-    }
+    } catch (e) {}
   }
 }
