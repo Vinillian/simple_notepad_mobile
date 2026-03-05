@@ -7,13 +7,11 @@ part 'settings_provider.g.dart';
 
 @riverpod
 class SettingsNotifier extends _$SettingsNotifier {
-  late final LocalSettingsService _localService;
-  late final SettingsService _remoteService;
+  late final LocalSettingsService _localService = LocalSettingsService();
+  late final SettingsService _remoteService = SettingsService();
 
   @override
   Future<Settings> build() async {
-    _localService = LocalSettingsService();
-    _remoteService = SettingsService();
     return _fetchLocalSettings();
   }
 
@@ -40,7 +38,6 @@ class SettingsNotifier extends _$SettingsNotifier {
         }
         return localSettings;
       } catch (e) {
-        // Нет сети - оставляем локальные
         return localSettings;
       }
     });
@@ -49,8 +46,6 @@ class SettingsNotifier extends _$SettingsNotifier {
   Future<void> _syncSettingsToRemote(Settings settings) async {
     try {
       await _remoteService.updateSettings(settings);
-    } catch (e) {
-      // Ошибка сети - игнорируем
-    }
+    } catch (e) {}
   }
 }

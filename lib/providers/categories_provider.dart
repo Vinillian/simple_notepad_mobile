@@ -1,24 +1,20 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../models/category.dart';
 import '../services/local_category_service.dart';
-import '../services/local_note_service.dart'; // Добавлен импорт
+import '../services/local_note_service.dart';
 import '../services/category_service.dart';
 import '../utils/merge_helper.dart';
-import 'notes_provider.dart'; // Добавлен импорт
+import 'notes_provider.dart';
 
 part 'categories_provider.g.dart';
 
-// Провайдер для получения количества заметок в каждой категории
 @riverpod
 class CategoryNotesCount extends _$CategoryNotesCount {
   @override
   Future<Map<String, int>> build() async {
-    // Подписываемся на изменения в заметках
     ref.watch(notesNotifierProvider(category: null, sort: 'new'));
-
     final localNoteService = LocalNoteService();
     final notes = await localNoteService.getNotes();
-
     final Map<String, int> countMap = {};
     for (var note in notes) {
       countMap[note.categoryId] = (countMap[note.categoryId] ?? 0) + 1;
@@ -29,13 +25,11 @@ class CategoryNotesCount extends _$CategoryNotesCount {
 
 @riverpod
 class CategoriesNotifier extends _$CategoriesNotifier {
-  late final LocalCategoryService _localService;
-  late final CategoryService _remoteService;
+  late final LocalCategoryService _localService = LocalCategoryService();
+  late final CategoryService _remoteService = CategoryService();
 
   @override
   Future<List<Category>> build() async {
-    _localService = LocalCategoryService();
-    _remoteService = CategoryService();
     return _fetchLocalCategories();
   }
 
@@ -46,7 +40,6 @@ class CategoriesNotifier extends _$CategoriesNotifier {
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _fetchLocalCategories());
-    // Обновляем счетчик заметок
     ref.invalidate(categoryNotesCountProvider);
   }
 
@@ -62,14 +55,12 @@ class CategoriesNotifier extends _$CategoriesNotifier {
     _deleteCategoryFromRemote(id);
   }
 
-  // Синхронизация с сервером: добавить недостающие на сервере категории
   Future<void> syncWithRemote() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final localCategories = await _localService.getCategories();
       final remoteCategories = await _remoteService.getCategories();
 
-      // Категории, которые есть локально, но нет на сервере
       final toAddToRemote = MergeHelper.findNewCategories(
         current: remoteCategories,
         imported: localCategories,
@@ -78,7 +69,6 @@ class CategoriesNotifier extends _$CategoriesNotifier {
         await _remoteService.createCategory(cat);
       }
 
-      // Категории, которые есть на сервере, но нет локально
       final toAddToLocal = MergeHelper.findNewCategories(
         current: localCategories,
         imported: remoteCategories,
@@ -87,10 +77,7 @@ class CategoriesNotifier extends _$CategoriesNotifier {
         await _localService.insertAll(toAddToLocal);
       }
 
-      // Обновляем счетчик заметок
       ref.invalidate(categoryNotesCountProvider);
-
-      // Возвращаем обновлённые локальные категории
       return await _localService.getCategories();
     });
   }
@@ -101,16 +88,12 @@ class CategoriesNotifier extends _$CategoriesNotifier {
       if (!remoteCategories.any((c) => c.id == category.id)) {
         await _remoteService.createCategory(category);
       }
-    } catch (e) {
-      // Игнорируем ошибки сети, синхронизация будет позже
-    }
+    } catch (e) {}
   }
 
   Future<void> _deleteCategoryFromRemote(String id) async {
     try {
       await _remoteService.deleteCategory(id);
-    } catch (e) {
-      // игнорируем
-    }
+    } catch (e) {}
   }
 }

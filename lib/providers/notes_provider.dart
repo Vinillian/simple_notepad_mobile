@@ -9,13 +9,12 @@ part 'notes_provider.g.dart';
 
 @riverpod
 class NotesNotifier extends _$NotesNotifier {
-  late final LocalNoteService _localService;
-  late final NoteService _remoteService;
+  // Инициализируем поля сразу при объявлении
+  late final LocalNoteService _localService = LocalNoteService();
+  late final NoteService _remoteService = NoteService();
 
   @override
   Future<List<Note>> build({String? category, String sort = 'new'}) async {
-    _localService = LocalNoteService();
-    _remoteService = NoteService();
     return _fetchLocalNotes(category, sort);
   }
 
@@ -36,7 +35,6 @@ class NotesNotifier extends _$NotesNotifier {
   }
 
   Future<void> updateNote(double id, Note note) async {
-    // double
     await _localService.updateNote(note);
     await refresh(category: category, sort: sort);
     ref.invalidate(categoryNotesCountProvider);
@@ -44,7 +42,6 @@ class NotesNotifier extends _$NotesNotifier {
   }
 
   Future<void> deleteNote(double id) async {
-    // double
     await _localService.deleteNote(id);
     await refresh(category: category, sort: sort);
     ref.invalidate(categoryNotesCountProvider);
@@ -88,7 +85,9 @@ class NotesNotifier extends _$NotesNotifier {
       if (!remoteNotes.any((n) => n.id == note.id)) {
         await _remoteService.createNote(note);
       }
-    } catch (e) {}
+    } catch (e) {
+      // Ошибка сети — игнорируем
+    }
   }
 
   Future<void> _updateNoteRemote(Note note) async {
@@ -98,7 +97,6 @@ class NotesNotifier extends _$NotesNotifier {
   }
 
   Future<void> _deleteNoteRemote(double id) async {
-    // double
     try {
       await _remoteService.deleteNote(id);
     } catch (e) {}
