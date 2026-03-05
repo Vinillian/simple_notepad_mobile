@@ -73,7 +73,6 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        // добавлена проверка mounted
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ошибка сохранения: $e')),
         );
@@ -120,7 +119,8 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
               categoriesAsync.when(
                 data: (categories) {
                   return DropdownButtonFormField<String>(
-                    value: _selectedCategoryId,
+                    // value заменён на initialValue
+                    initialValue: _selectedCategoryId,
                     decoration: const InputDecoration(
                       labelText: 'Категория',
                       border: OutlineInputBorder(),

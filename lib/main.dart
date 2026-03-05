@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/home_screen.dart';
+import 'services/database_helper.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Инициализация базы данных (просто создаём файл, если его нет)
+  await DatabaseHelper().database;
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -23,7 +27,6 @@ class MyApp extends StatelessWidget {
           centerTitle: true,
           elevation: 0,
         ),
-        // cardTheme полностью удалён — ошибка исчезнет
       ),
       darkTheme: ThemeData(
         useMaterial3: true,

@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/category.dart';
+// import '../models/category.dart'; // убран неиспользуемый импорт
 import '../providers/notes_provider.dart';
 import '../providers/categories_provider.dart';
+import '../providers/settings_provider.dart';
 import '../widgets/note_card.dart';
 import '../widgets/loading_indicator.dart';
 import 'note_edit_screen.dart';
 import 'categories_screen.dart';
+import 'backup_screen.dart';
+import 'initial_setup_screen.dart';
+import '../services/local_category_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -18,6 +22,23 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? selectedCategory;
   String sortOrder = 'new';
+  bool _isSyncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfEmpty();
+  }
+
+  Future<void> _checkIfEmpty() async {
+    final localCategoryService = LocalCategoryService();
+    final categories = await localCategoryService.getCategories();
+    if (categories.isEmpty && mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const InitialSetupScreen()),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,11 +46,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       notesNotifierProvider(category: selectedCategory, sort: sortOrder),
     );
     final categoriesAsync = ref.watch(categoriesNotifierProvider);
+    // final settingsAsync = ref.watch(settingsNotifierProvider); // убрана неиспользуемая переменная
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Мои заметки'),
         actions: [
+          IconButton(
+            icon: Icon(_isSyncing ? Icons.sync_disabled : Icons.sync),
+            onPressed: _isSyncing ? null : _syncData,
+            tooltip: 'Синхронизировать с сервером',
+          ),
           IconButton(
             icon: const Icon(Icons.category),
             onPressed: () {
@@ -39,6 +66,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
             },
             tooltip: 'Управление категориями',
+          ),
+          IconButton(
+            icon: const Icon(Icons.backup),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BackupScreen()),
+              );
+            },
+            tooltip: 'Резервное копирование',
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.sort),
@@ -54,15 +91,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // 🔽 Выпадающий список категорий
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: categoriesAsync.when(
-              data: (categories) {
-                return DropdownButtonFormField<String>(
-                  value: selectedCategory ?? '',
+      body: categoriesAsync.when(
+        data: (categories) {
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: DropdownButtonFormField<String>(
+                  initialValue: selectedCategory ?? '',
                   decoration: const InputDecoration(
                     labelText: 'Категория',
                     border: OutlineInputBorder(),
@@ -101,106 +137,109 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       selectedCategory = value == '' ? null : value;
                     });
                   },
-                );
-              },
-              error: (error, stack) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.error, color: Colors.red),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Ошибка загрузки категорий: $error',
-                        style: const TextStyle(color: Colors.red),
+                ),
+              ),
+              Expanded(
+                child: notesAsync.when(
+                  data: (notes) {
+                    if (notes.isEmpty) {
+                      return const Center(child: Text('Нет заметок'));
+                    }
+                    return ListView.builder(
+                      itemCount: notes.length,
+                      itemBuilder: (ctx, i) => NoteCard(
+                        note: notes[i],
+                        onTap: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => NoteEditScreen(note: notes[i]),
+                            ),
+                          );
+                          if (result == true) {
+                            ref.invalidate(notesNotifierProvider);
+                          }
+                        },
+                        onDelete: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Удаление'),
+                              content: const Text('Удалить заметку?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Отмена'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  child: const Text('Удалить'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await ref
+                                .read(notesNotifierProvider(
+                                        category: selectedCategory,
+                                        sort: sortOrder)
+                                    .notifier)
+                                .deleteNote(notes[i].id);
+                          }
+                        },
                       ),
+                    );
+                  },
+                  error: (error, stack) => Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error, size: 60, color: Colors.red),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Ошибка загрузки заметок:\n$error',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            ref.invalidate(notesNotifierProvider);
+                            ref.invalidate(categoriesNotifierProvider);
+                          },
+                          child: const Text('Повторить'),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-              loading: () => const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            ),
-          ),
-          // Список заметок
-          Expanded(
-            child: notesAsync.when(
-              data: (notes) {
-                if (notes.isEmpty) {
-                  return const Center(child: Text('Нет заметок'));
-                }
-                return ListView.builder(
-                  itemCount: notes.length,
-                  itemBuilder: (ctx, i) => NoteCard(
-                    note: notes[i],
-                    onTap: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => NoteEditScreen(note: notes[i]),
-                        ),
-                      );
-                      if (result == true) {
-                        ref.invalidate(notesNotifierProvider);
-                      }
-                    },
-                    onDelete: () async {
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Удаление'),
-                          content: const Text('Удалить заметку?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Отмена'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text('Удалить'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirm == true) {
-                        await ref
-                            .read(notesNotifierProvider(
-                                    category: selectedCategory, sort: sortOrder)
-                                .notifier)
-                            .deleteNote(notes[i].id);
-                      }
-                    },
                   ),
-                );
-              },
-              error: (error, stack) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error, size: 60, color: Colors.red),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Ошибка загрузки заметок:\n$error',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        ref.invalidate(notesNotifierProvider);
-                        ref.invalidate(categoriesNotifierProvider);
-                      },
-                      child: const Text('Повторить'),
-                    ),
-                  ],
+                  loading: () => const LoadingIndicator(),
                 ),
               ),
-              loading: () => const LoadingIndicator(),
-            ),
+            ],
+          );
+        },
+        error: (error, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, size: 60, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                'Ошибка загрузки категорий:\n$error',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  ref.invalidate(categoriesNotifierProvider);
+                },
+                child: const Text('Повторить'),
+              ),
+            ],
           ),
-        ],
+        ),
+        loading: () => const LoadingIndicator(),
       ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
@@ -215,5 +254,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _syncData() async {
+    setState(() => _isSyncing = true);
+    try {
+      await ref.read(categoriesNotifierProvider.notifier).syncWithRemote();
+      await ref
+          .read(
+              notesNotifierProvider(category: selectedCategory, sort: sortOrder)
+                  .notifier)
+          .syncWithRemote();
+      await ref.read(settingsNotifierProvider.notifier).syncWithRemote();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Синхронизация завершена')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка синхронизации: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isSyncing = false);
+    }
   }
 }

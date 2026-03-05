@@ -60,14 +60,18 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
   Future<void> _deleteCategory(Category category) async {
     if (category.id == 'all') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Нельзя удалить системную категорию')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Нельзя удалить системную категорию')),
+        );
+      }
       return;
     }
 
-    final notes =
-        await ref.read(notesNotifierProvider(category: category.id).future);
+    // Получаем заметки для этой категории (используем провайдер с фильтром)
+    final notes = await ref
+        .read(notesNotifierProvider(category: category.id, sort: 'new').future);
+
     if (notes.isNotEmpty) {
       final confirm = await showDialog<bool>(
         context: context,
@@ -92,6 +96,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       );
       if (confirm != true) return;
 
+      // Удаляем все заметки этой категории
       for (final note in notes) {
         await ref
             .read(notesNotifierProvider(category: category.id).notifier)
