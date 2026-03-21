@@ -7,7 +7,7 @@ import '../widgets/note_card.dart';
 import '../widgets/loading_indicator.dart';
 import 'note_edit_screen.dart';
 import 'categories_screen.dart';
-import 'backup_screen.dart'; // Этот импорт должен быть
+import 'backup_screen.dart';
 import 'initial_setup_screen.dart';
 import '../services/local_category_service.dart';
 
@@ -22,6 +22,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? selectedCategory;
   String sortOrder = 'new';
   bool _isSyncing = false;
+  String _searchQuery = ''; // переменная для поиска
 
   @override
   void initState() {
@@ -88,6 +89,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Поиск по заголовку или тексту...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[800]
+                    : Colors.grey[200],
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.toLowerCase();
+                });
+              },
+            ),
+          ),
+        ),
       ),
       body: categoriesAsync.when(
         data: (categories) {
@@ -140,18 +176,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Expanded(
                 child: notesAsync.when(
                   data: (notes) {
-                    if (notes.isEmpty) {
-                      return const Center(child: Text('Нет заметок'));
+                    // Фильтрация заметок по поисковому запросу
+                    final filteredNotes = _searchQuery.isEmpty
+                        ? notes
+                        : notes.where((note) {
+                            final title = note.title?.toLowerCase() ?? '';
+                            final content = note.content.toLowerCase();
+                            return title.contains(_searchQuery) ||
+                                content.contains(_searchQuery);
+                          }).toList();
+
+                    if (filteredNotes.isEmpty) {
+                      return Center(
+                        child: Text(
+                          _searchQuery.isEmpty
+                              ? 'Нет заметок'
+                              : 'Ничего не найдено',
+                        ),
+                      );
                     }
                     return ListView.builder(
-                      itemCount: notes.length,
+                      itemCount: filteredNotes.length,
                       itemBuilder: (ctx, i) => NoteCard(
-                        note: notes[i],
+                        note: filteredNotes[i],
                         onTap: () async {
                           final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => NoteEditScreen(note: notes[i]),
+                              builder: (_) =>
+                                  NoteEditScreen(note: filteredNotes[i]),
                             ),
                           );
                           if (result == true) {
@@ -182,7 +235,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         category: selectedCategory,
                                         sort: sortOrder)
                                     .notifier)
-                                .deleteNote(notes[i].id);
+                                .deleteNote(filteredNotes[i].id);
                           }
                         },
                       ),
