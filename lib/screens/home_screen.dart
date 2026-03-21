@@ -22,7 +22,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? selectedCategory;
   String sortOrder = 'new';
   bool _isSyncing = false;
-  String _searchQuery = ''; // переменная для поиска
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -176,7 +176,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Expanded(
                 child: notesAsync.when(
                   data: (notes) {
-                    // Фильтрация заметок по поисковому запросу
                     final filteredNotes = _searchQuery.isEmpty
                         ? notes
                         : notes.where((note) {
@@ -199,18 +198,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       itemCount: filteredNotes.length,
                       itemBuilder: (ctx, i) => NoteCard(
                         note: filteredNotes[i],
-                        onTap: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  NoteEditScreen(note: filteredNotes[i]),
-                            ),
-                          );
-                          if (result == true) {
-                            ref.invalidate(notesNotifierProvider);
-                          }
-                        },
+                        onTap: filteredNotes[i].type != 'link'
+                            ? () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        NoteEditScreen(note: filteredNotes[i]),
+                                  ),
+                                );
+                                if (result == true) {
+                                  ref.invalidate(notesNotifierProvider);
+                                }
+                              }
+                            : null,
                         onDelete: () async {
                           final confirm = await showDialog<bool>(
                             context: context,
@@ -236,6 +237,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         sort: sortOrder)
                                     .notifier)
                                 .deleteNote(filteredNotes[i].id);
+                          }
+                        },
+                        onEdit: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  NoteEditScreen(note: filteredNotes[i]),
+                            ),
+                          );
+                          if (result == true) {
+                            ref.invalidate(notesNotifierProvider);
                           }
                         },
                       ),

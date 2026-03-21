@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/note.dart';
 
 class NoteCard extends StatelessWidget {
   final Note note;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onEdit;
 
   const NoteCard({
     super.key,
     required this.note,
     this.onTap,
     this.onDelete,
+    this.onEdit,
   });
 
-  // Функция для открытия ссылки
   Future<void> _launchUrl() async {
     final url = Uri.parse(note.content);
     if (await canLaunchUrl(url)) {
@@ -28,25 +30,36 @@ class NoteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isLink = note.type == 'link';
+    final metadata = note.metadata ?? {};
+    final imageUrl = metadata['image'] as String?;
+    final faviconUrl = metadata['favicon'] as String?;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: isLink
-            ? null
-            : onTap, // если ссылка, отключаем редактирование по нажатию на всю карточку
+        onTap: isLink ? null : onTap,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Строка с заголовком и датой
+              // Верхняя строка: иконка, favicon, заголовок, кнопка редактирования, дата
               Row(
                 children: [
                   if (isLink) ...[
-                    Icon(Icons.link,
-                        size: 18, color: theme.colorScheme.primary),
+                    // Если есть favicon – показываем его, иначе стандартную иконку
+                    if (faviconUrl != null && faviconUrl.isNotEmpty)
+                      CachedNetworkImage(
+                        imageUrl: faviconUrl,
+                        width: 18,
+                        height: 18,
+                        errorWidget: (context, url, error) => Icon(Icons.link,
+                            size: 18, color: theme.colorScheme.primary),
+                      )
+                    else
+                      Icon(Icons.link,
+                          size: 18, color: theme.colorScheme.primary),
                     const SizedBox(width: 4),
                   ],
                   Expanded(
@@ -73,6 +86,16 @@ class NoteCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                   ),
+                  // Кнопка редактирования (для всех заметок)
+                  if (onEdit != null)
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 18),
+                      onPressed: onEdit,
+                      tooltip: 'Редактировать',
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                      padding: EdgeInsets.zero,
+                    ),
                   Text(
                     note.date,
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -83,34 +106,61 @@ class NoteCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
 
-              // Содержимое заметки
+              // Содержимое (для ссылок – изображение + описание)
               if (isLink) ...[
-                // Для ссылок показываем URL и короткое описание (если есть)
-                GestureDetector(
-                  onTap: _launchUrl,
-                  child: Text(
-                    note.content,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.primary,
-                      decoration: TextDecoration.underline,
+                if (imageUrl != null && imageUrl.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      height: 120,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) =>
+                          const Center(child: CircularProgressIndicator()),
+                      errorWidget: (context, url, error) =>
+                          const Icon(Icons.broken_image, size: 50),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                if (note.metadata != null &&
-                    note.metadata!.containsKey('description'))
+                if (metadata['title'] != null && metadata['title'].isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.only(top: 8),
                     child: Text(
-                      note.metadata!['description'] as String,
-                      style: theme.textTheme.bodySmall,
+                      metadata['title'],
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                if (metadata['description'] != null &&
+                    metadata['description'].isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      metadata['description'],
+                      style: theme.textTheme.bodySmall,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                // Отображаем домен
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: GestureDetector(
+                    onTap: _launchUrl,
+                    child: Text(
+                      metadata['siteName'] ?? _extractDomain(note.content),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ),
               ] else ...[
-                // Обычные заметки
+                // Обычная заметка
                 Text(
                   note.content,
                   maxLines: 3,
@@ -140,5 +190,14 @@ class NoteCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _extractDomain(String url) {
+    try {
+      final uri = Uri.parse(url);
+      return uri.host.replaceFirst('www.', '');
+    } catch (_) {
+      return url;
+    }
   }
 }
