@@ -22,35 +22,9 @@ class BackupData {
   }) : exportDate = exportDate ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
-        'notes': notes.map((n) {
-          final noteMap = n.toJson();
-          return {
-            'id': noteMap['id'],
-            'title': noteMap['title'],
-            'content': noteMap['content'],
-            'category': noteMap['category_id'],
-            'date': noteMap['date'],
-            'createdTimestamp': noteMap['created_timestamp'],
-            'updatedTimestamp': noteMap['updated_timestamp'],
-            'expanded': noteMap['expanded'] == 1,
-            'editMode': noteMap['edit_mode'] == 1,
-            'type': noteMap['type'],
-            'metadata': noteMap['metadata'],
-          };
-        }).toList(),
-        'categories': categories.map((c) {
-          final catMap = c.toJson();
-          return {
-            'id': catMap['id'],
-            'name': catMap['name'],
-            'color': catMap['color'],
-            'custom': catMap['custom'] == 1,
-          };
-        }).toList(),
-        'settings': {
-          'sortOrder': settings.sortOrder,
-          'viewMode': settings.viewMode,
-        },
+        'notes': notes.map((n) => n.toJson()).toList(),
+        'categories': categories.map((c) => c.toJson()).toList(),
+        'settings': settings.toJson(),
         'exportDate': exportDate.toIso8601String(),
         'version': version,
       };
