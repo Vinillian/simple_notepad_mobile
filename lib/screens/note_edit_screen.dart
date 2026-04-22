@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../models/note.dart';
 import '../providers/notes_provider.dart';
 import '../providers/categories_provider.dart';
+import '../utils/helpers.dart';
 
 class NoteEditScreen extends ConsumerStatefulWidget {
   final Note? note;
@@ -17,6 +19,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
   String? _selectedCategoryId;
+  bool _isPreviewMode = false;
 
   @override
   void initState() {
@@ -44,8 +47,11 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
     }
 
     final now = DateTime.now();
+    final type = _detectType(_contentController.text);
+    final previewText =
+        type == 'note' ? plainTextFromMarkdown(_contentController.text) : null;
+
     final note = Note(
-      // id: double, если новая заметка – используем миллисекунды как double
       id: widget.note?.id ?? now.millisecondsSinceEpoch.toDouble(),
       title: _titleController.text.isEmpty ? null : _titleController.text,
       content: _contentController.text,
@@ -57,8 +63,9 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
       updatedTimestamp: now.millisecondsSinceEpoch,
       expanded: 0,
       editMode: 0,
-      type: _detectType(_contentController.text),
+      type: type,
       metadata: null,
+      previewText: previewText,
     );
 
     try {
@@ -97,6 +104,15 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
       appBar: AppBar(
         title: Text(widget.note == null ? 'Новая заметка' : 'Редактировать'),
         actions: [
+          IconButton(
+            icon: Icon(_isPreviewMode ? Icons.edit : Icons.visibility),
+            onPressed: () {
+              setState(() {
+                _isPreviewMode = !_isPreviewMode;
+              });
+            },
+            tooltip: _isPreviewMode ? 'Редактировать' : 'Предпросмотр',
+          ),
           IconButton(
             icon: const Icon(Icons.save),
             onPressed: _saveNote,
@@ -142,23 +158,33 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: TextFormField(
-                  controller: _contentController,
-                  decoration: const InputDecoration(
-                    labelText: 'Текст заметки',
-                    border: OutlineInputBorder(),
-                    alignLabelWithHint: true,
-                  ),
-                  maxLines: null,
-                  expands: true,
-                  textAlignVertical: TextAlignVertical.top,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Введите текст';
-                    }
-                    return null;
-                  },
-                ),
+                child: _isPreviewMode
+                    ? SingleChildScrollView(
+                        child: MarkdownBody(
+                          data: _contentController.text,
+                          styleSheet: MarkdownStyleSheet.fromTheme(
+                            Theme.of(context),
+                          ),
+                          softLineBreak: true,
+                        ),
+                      )
+                    : TextFormField(
+                        controller: _contentController,
+                        decoration: const InputDecoration(
+                          labelText: 'Текст заметки (поддерживается Markdown)',
+                          border: OutlineInputBorder(),
+                          alignLabelWithHint: true,
+                        ),
+                        maxLines: null,
+                        expands: true,
+                        textAlignVertical: TextAlignVertical.top,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Введите текст';
+                          }
+                          return null;
+                        },
+                      ),
               ),
             ],
           ),

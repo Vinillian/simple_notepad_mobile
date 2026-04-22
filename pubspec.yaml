@@ -20,7 +20,8 @@ dependencies:
   path: ^1.9.0
   connectivity_plus: ^6.0.3
   url_launcher: ^6.3.0
-  cached_network_image: ^3.3.1   # добавлено
+  cached_network_image: ^3.3.1
+  flutter_markdown: ^0.7.4+1   # добавлена поддержка Markdown
 
 dev_dependencies:
   flutter_test:

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:markdown/markdown.dart' as md;
 
 Color hexToColor(String hex) {
   final buffer = StringBuffer();
@@ -32,4 +33,27 @@ String formatTimestamp(int timestamp) {
 String truncate(String text, int maxLength) {
   if (text.length <= maxLength) return text;
   return '${text.substring(0, maxLength)}...';
+}
+
+/// Извлекает чистый текст из Markdown, ограничивая длину до [maxLength].
+String plainTextFromMarkdown(String markdown, {int maxLength = 150}) {
+  try {
+    final ast = md.Document().parse(markdown);
+    final buffer = StringBuffer();
+    for (final node in ast) {
+      buffer.write(node.textContent);
+    }
+    var text = buffer.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (text.length > maxLength) {
+      text = '${text.substring(0, maxLength)}…';
+    }
+    return text;
+  } catch (e) {
+    // В случае ошибки парсинга возвращаем сырой текст с ограничением
+    var text = markdown.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (text.length > maxLength) {
+      text = '${text.substring(0, maxLength)}…';
+    }
+    return text;
+  }
 }

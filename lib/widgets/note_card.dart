@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../models/note.dart';
+import '../utils/helpers.dart';
 
 class NoteCard extends StatelessWidget {
   final Note note;
@@ -44,11 +46,9 @@ class NoteCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Верхняя строка: иконка, favicon, заголовок, кнопка редактирования, дата
               Row(
                 children: [
                   if (isLink) ...[
-                    // Если есть favicon – показываем его, иначе стандартную иконку
                     if (faviconUrl != null && faviconUrl.isNotEmpty)
                       CachedNetworkImage(
                         imageUrl: faviconUrl,
@@ -86,7 +86,6 @@ class NoteCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                   ),
-                  // Кнопка редактирования (для всех заметок)
                   if (onEdit != null)
                     IconButton(
                       icon: const Icon(Icons.edit, size: 18),
@@ -105,8 +104,6 @@ class NoteCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-
-              // Содержимое (для ссылок – изображение + описание)
               if (isLink) ...[
                 if (imageUrl != null && imageUrl.isNotEmpty)
                   ClipRRect(
@@ -145,7 +142,6 @@ class NoteCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                // Отображаем домен
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: GestureDetector(
@@ -159,19 +155,16 @@ class NoteCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              ] else ...[
-                // Обычная заметка
+              ] else
+                // Обычная заметка: показываем previewText (чистый текст, без Markdown)
                 Text(
-                  note.content,
+                  note.previewText ?? plainTextFromMarkdown(note.content),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                   ),
                 ),
-              ],
-
-              // Кнопка удаления
               if (onDelete != null) ...[
                 const SizedBox(height: 8),
                 Align(

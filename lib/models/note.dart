@@ -12,6 +12,7 @@ class Note {
   final int editMode;
   final String type;
   final Map<String, dynamic>? metadata;
+  final String? previewText; // новое поле
 
   Note({
     required this.id,
@@ -25,6 +26,7 @@ class Note {
     required this.editMode,
     required this.type,
     this.metadata,
+    this.previewText,
   });
 
   factory Note.fromJson(Map<String, dynamic> json) {
@@ -35,7 +37,6 @@ class Note {
         try {
           parsedMetadata = jsonDecode(raw) as Map<String, dynamic>;
         } catch (e) {
-          // Некорректный JSON в metadata, игнорируем
           parsedMetadata = null;
         }
       }
@@ -55,6 +56,7 @@ class Note {
       editMode: (json['edit_mode'] as num).toInt(),
       type: json['type'] as String,
       metadata: parsedMetadata,
+      previewText: json['preview_text'] as String?,
     );
   }
 
@@ -71,6 +73,7 @@ class Note {
       'edit_mode': editMode,
       'type': type,
       'metadata': metadata != null ? jsonEncode(metadata) : null,
+      'preview_text': previewText,
     };
   }
 }
