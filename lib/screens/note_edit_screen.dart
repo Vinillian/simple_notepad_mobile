@@ -4,7 +4,6 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import '../models/note.dart';
 import '../providers/notes_provider.dart';
 import '../providers/categories_provider.dart';
-import '../utils/helpers.dart';
 
 class NoteEditScreen extends ConsumerStatefulWidget {
   final Note? note;
@@ -19,7 +18,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
   String? _selectedCategoryId;
-  bool _isPreviewMode = false;
+  bool _isPreviewMode = true; // Теперь по умолчанию показываем предпросмотр
 
   @override
   void initState() {
@@ -48,8 +47,6 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
 
     final now = DateTime.now();
     final type = _detectType(_contentController.text);
-    final previewText =
-        type == 'note' ? plainTextFromMarkdown(_contentController.text) : null;
 
     final note = Note(
       id: widget.note?.id ?? now.millisecondsSinceEpoch.toDouble(),
@@ -65,7 +62,6 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
       editMode: 0,
       type: type,
       metadata: null,
-      previewText: previewText,
     );
 
     try {
@@ -102,8 +98,9 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.note == null ? 'Новая заметка' : 'Редактировать'),
+        title: Text(widget.note == null ? 'Новая заметка' : 'Просмотр'),
         actions: [
+          // Кнопка переключения режима: карандаш / глаз
           IconButton(
             icon: Icon(_isPreviewMode ? Icons.edit : Icons.visibility),
             onPressed: () {
@@ -125,6 +122,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
           key: _formKey,
           child: Column(
             children: [
+              // Заголовок – всегда видим
               TextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(
@@ -133,6 +131,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              // Категория
               categoriesAsync.when(
                 data: (categories) {
                   return DropdownButtonFormField<String>(
@@ -157,6 +156,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
                 loading: () => const SizedBox(height: 56),
               ),
               const SizedBox(height: 16),
+              // Переключаемое содержимое
               Expanded(
                 child: _isPreviewMode
                     ? SingleChildScrollView(

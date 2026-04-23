@@ -3,7 +3,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../models/note.dart';
-import '../utils/helpers.dart';
 
 class NoteCard extends StatelessWidget {
   final Note note;
@@ -156,13 +155,24 @@ class NoteCard extends StatelessWidget {
                   ),
                 ),
               ] else
-                // Обычная заметка: показываем previewText (чистый текст, без Markdown)
-                Text(
-                  note.previewText ?? plainTextFromMarkdown(note.content),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                // Обычная заметка с Markdown, ограниченная по высоте
+                SizedBox(
+                  height: 70,
+                  child: ClipRect(
+                    child: SingleChildScrollView(
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: MarkdownBody(
+                        data: note.content,
+                        styleSheet:
+                            MarkdownStyleSheet.fromTheme(theme).copyWith(
+                          p: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.8),
+                          ),
+                        ),
+                        softLineBreak: true,
+                      ),
+                    ),
                   ),
                 ),
               if (onDelete != null) ...[

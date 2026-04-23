@@ -4,7 +4,6 @@ import '../services/local_note_service.dart';
 import '../services/note_service.dart';
 import '../services/link_metadata_service.dart';
 import '../utils/merge_helper.dart';
-import '../utils/helpers.dart'; // для plainTextFromMarkdown
 import 'categories_provider.dart';
 
 part 'notes_provider.g.dart';
@@ -29,51 +28,26 @@ class NotesNotifier extends _$NotesNotifier {
   }
 
   Future<void> addNote(Note note) async {
-    // Генерируем previewText для Markdown-заметок
-    final noteWithPreview = _addPreviewText(note);
-    await _localService.createNote(noteWithPreview);
+    await _localService.createNote(note);
     await refresh(category: category, sort: sort);
     ref.invalidate(categoryNotesCountProvider);
-    _syncNoteToRemote(noteWithPreview);
+    _syncNoteToRemote(note);
 
-    if (noteWithPreview.type == 'link') {
-      _fetchAndUpdateMetadata(noteWithPreview.id, noteWithPreview.content);
+    if (note.type == 'link') {
+      _fetchAndUpdateMetadata(note.id, note.content);
     }
   }
 
   Future<void> updateNote(double id, Note note) async {
-    final noteWithPreview = _addPreviewText(note);
-    await _localService.updateNote(noteWithPreview);
+    await _localService.updateNote(note);
     await refresh(category: category, sort: sort);
     ref.invalidate(categoryNotesCountProvider);
-    _updateNoteRemote(noteWithPreview);
+    _updateNoteRemote(note);
 
-    if (noteWithPreview.type == 'link' &&
-        (noteWithPreview.metadata == null ||
-            noteWithPreview.metadata!.isEmpty)) {
-      _fetchAndUpdateMetadata(noteWithPreview.id, noteWithPreview.content);
+    if (note.type == 'link' &&
+        (note.metadata == null || note.metadata!.isEmpty)) {
+      _fetchAndUpdateMetadata(note.id, note.content);
     }
-  }
-
-  Note _addPreviewText(Note note) {
-    if (note.type == 'note') {
-      final preview = plainTextFromMarkdown(note.content);
-      return Note(
-        id: note.id,
-        title: note.title,
-        content: note.content,
-        categoryId: note.categoryId,
-        date: note.date,
-        createdTimestamp: note.createdTimestamp,
-        updatedTimestamp: note.updatedTimestamp,
-        expanded: note.expanded,
-        editMode: note.editMode,
-        type: note.type,
-        metadata: note.metadata,
-        previewText: preview,
-      );
-    }
-    return note;
   }
 
   Future<void> deleteNote(double id) async {
@@ -104,27 +78,7 @@ class NotesNotifier extends _$NotesNotifier {
         imported: remoteNotes,
       );
       if (toAddToLocal.isNotEmpty) {
-        // Убедимся, что у пришедших заметок есть previewText
-        final notesWithPreview = toAddToLocal.map((n) {
-          if (n.type == 'note' && n.previewText == null) {
-            return Note(
-              id: n.id,
-              title: n.title,
-              content: n.content,
-              categoryId: n.categoryId,
-              date: n.date,
-              createdTimestamp: n.createdTimestamp,
-              updatedTimestamp: n.updatedTimestamp,
-              expanded: n.expanded,
-              editMode: n.editMode,
-              type: n.type,
-              metadata: n.metadata,
-              previewText: plainTextFromMarkdown(n.content),
-            );
-          }
-          return n;
-        }).toList();
-        await _localService.insertAll(notesWithPreview);
+        await _localService.insertAll(toAddToLocal);
       }
 
       ref.invalidate(categoryNotesCountProvider);
