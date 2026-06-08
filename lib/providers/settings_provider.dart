@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' as foundation;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../models/settings.dart';
 import '../services/local_settings_service.dart';
@@ -38,6 +39,7 @@ class SettingsNotifier extends _$SettingsNotifier {
         }
         return localSettings;
       } catch (e) {
+        foundation.debugPrint('syncWithRemote error: $e');
         return localSettings;
       }
     });
@@ -46,6 +48,8 @@ class SettingsNotifier extends _$SettingsNotifier {
   Future<void> _syncSettingsToRemote(Settings settings) async {
     try {
       await _remoteService.updateSettings(settings);
-    } catch (e) {}
+    } catch (e) {
+      foundation.debugPrint('_syncSettingsToRemote error: $e');
+    }
   }
 }

@@ -99,13 +99,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          setState(() {
-                            _searchQuery = '';
-                          });
-                        },
-                      )
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                )
                     : null,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
@@ -137,16 +137,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     labelText: 'Категория',
                     border: OutlineInputBorder(),
                     contentPadding:
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                   items: [
                     const DropdownMenuItem(
                       value: '',
                       child: Text('Все категории'),
                     ),
-                    ...categories.map((cat) {
+                    ...categories.map((category) {
                       return DropdownMenuItem(
-                        value: cat.id,
+                        value: category.id,
                         child: Row(
                           children: [
                             Container(
@@ -154,13 +154,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               height: 16,
                               margin: const EdgeInsets.only(right: 8),
                               decoration: BoxDecoration(
-                                color: Color(int.parse(cat.color.substring(1),
-                                        radix: 16) +
+                                color: Color(int.parse(category.color.substring(1),
+                                    radix: 16) +
                                     0xFF000000),
                                 shape: BoxShape.circle,
                               ),
                             ),
-                            Text(cat.name),
+                            Text(category.name),
                           ],
                         ),
                       );
@@ -179,11 +179,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     final filteredNotes = _searchQuery.isEmpty
                         ? notes
                         : notes.where((note) {
-                            final title = note.title?.toLowerCase() ?? '';
-                            final content = note.content.toLowerCase();
-                            return title.contains(_searchQuery) ||
-                                content.contains(_searchQuery);
-                          }).toList();
+                      final title = note.title?.toLowerCase() ?? '';
+                      final content = note.content.toLowerCase();
+                      return title.contains(_searchQuery) ||
+                          content.contains(_searchQuery);
+                    }).toList();
 
                     if (filteredNotes.isEmpty) {
                       return Center(
@@ -200,17 +200,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         note: filteredNotes[i],
                         onTap: filteredNotes[i].type != 'link'
                             ? () async {
-                                final result = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        NoteEditScreen(note: filteredNotes[i]),
-                                  ),
-                                );
-                                if (result == true) {
-                                  ref.invalidate(notesNotifierProvider);
-                                }
-                              }
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  NoteEditScreen(note: filteredNotes[i]),
+                            ),
+                          );
+                          if (result == true) {
+                            ref.invalidate(notesNotifierProvider);
+                          }
+                        }
                             : null,
                         onDelete: () async {
                           final confirm = await showDialog<bool>(
@@ -233,9 +233,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           if (confirm == true) {
                             await ref
                                 .read(notesNotifierProvider(
-                                        category: selectedCategory,
-                                        sort: sortOrder)
-                                    .notifier)
+                                category: selectedCategory,
+                                sort: sortOrder)
+                                .notifier)
                                 .deleteNote(filteredNotes[i].id);
                           }
                         },
@@ -326,8 +326,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref.read(categoriesNotifierProvider.notifier).syncWithRemote();
       await ref
           .read(
-              notesNotifierProvider(category: selectedCategory, sort: sortOrder)
-                  .notifier)
+          notesNotifierProvider(category: selectedCategory, sort: sortOrder)
+              .notifier)
           .syncWithRemote();
       await ref.read(settingsNotifierProvider.notifier).syncWithRemote();
 

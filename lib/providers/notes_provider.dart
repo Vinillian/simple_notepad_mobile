@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' as foundation;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../models/note.dart';
 import '../services/local_note_service.dart';
@@ -95,20 +96,24 @@ class NotesNotifier extends _$NotesNotifier {
         await _remoteService.createNote(note);
       }
     } catch (e) {
-      // Ошибка сети — игнорируем
+      foundation.debugPrint('_syncNoteToRemote error: $e');
     }
   }
 
   Future<void> _updateNoteRemote(Note note) async {
     try {
       await _remoteService.updateNote(note.id, note);
-    } catch (e) {}
+    } catch (e) {
+      foundation.debugPrint('_updateNoteRemote error: $e');
+    }
   }
 
   Future<void> _deleteNoteRemote(double id) async {
     try {
       await _remoteService.deleteNote(id);
-    } catch (e) {}
+    } catch (e) {
+      foundation.debugPrint('_deleteNoteRemote error: $e');
+    }
   }
 
   Future<void> _fetchAndUpdateMetadata(double noteId, String url) async {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'markdown_with_latex.dart';
 import '../models/note.dart';
 
 class NoteCard extends StatelessWidget {
@@ -64,26 +65,26 @@ class NoteCard extends StatelessWidget {
                   Expanded(
                     child: isLink
                         ? GestureDetector(
-                            onTap: _launchUrl,
-                            child: Text(
-                              note.title ?? 'Открыть ссылку',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.primary,
-                                decoration: TextDecoration.underline,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          )
+                      onTap: _launchUrl,
+                      child: Text(
+                        note.title ?? 'Открыть ссылку',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                          decoration: TextDecoration.underline,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    )
                         : Text(
-                            note.title ?? 'Без заголовка',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      note.title ?? 'Без заголовка',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   if (onEdit != null)
                     IconButton(
@@ -91,7 +92,7 @@ class NoteCard extends StatelessWidget {
                       onPressed: onEdit,
                       tooltip: 'Редактировать',
                       constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                      const BoxConstraints(minWidth: 32, minHeight: 32),
                       padding: EdgeInsets.zero,
                     ),
                   Text(
@@ -103,6 +104,7 @@ class NoteCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
+
               if (isLink) ...[
                 if (imageUrl != null && imageUrl.isNotEmpty)
                   ClipRRect(
@@ -113,9 +115,9 @@ class NoteCard extends StatelessWidget {
                       width: double.infinity,
                       fit: BoxFit.cover,
                       placeholder: (context, url) =>
-                          const Center(child: CircularProgressIndicator()),
+                      const Center(child: CircularProgressIndicator()),
                       errorWidget: (context, url, error) =>
-                          const Icon(Icons.broken_image, size: 50),
+                      const Icon(Icons.broken_image, size: 50),
                     ),
                   ),
                 if (metadata['title'] != null && metadata['title'].isNotEmpty)
@@ -155,19 +157,17 @@ class NoteCard extends StatelessWidget {
                   ),
                 ),
               ] else
-                // Обычная заметка с Markdown, ограниченная по высоте
+              // Обычная заметка – Markdown + LaTeX
                 SizedBox(
                   height: 70,
                   child: ClipRect(
                     child: SingleChildScrollView(
                       physics: const NeverScrollableScrollPhysics(),
-                      child: MarkdownBody(
+                      child: MarkdownWithLatex(
                         data: note.content,
-                        styleSheet:
-                            MarkdownStyleSheet.fromTheme(theme).copyWith(
+                        styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
                           p: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.8),
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                           ),
                         ),
                         softLineBreak: true,
@@ -175,6 +175,7 @@ class NoteCard extends StatelessWidget {
                     ),
                   ),
                 ),
+
               if (onDelete != null) ...[
                 const SizedBox(height: 8),
                 Align(
