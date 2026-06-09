@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:flutter_math_fork/flutter_math.dart';
-import 'package:markdown/markdown.dart' as md; // необходим для md.Element
+import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
+// Импортируем основной пакет markdown для работы с ExtensionSet
+import 'package:markdown/markdown.dart' as md;
 
 class MarkdownWithLatex extends StatelessWidget {
   final String data;
@@ -17,79 +18,19 @@ class MarkdownWithLatex extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final processed = _preprocess(data);
     return MarkdownBody(
-      data: processed.text,
+      data: data,
       styleSheet: styleSheet,
       softLineBreak: softLineBreak,
       builders: {
-        'latex': LatexBuilder(styleSheet: styleSheet),
+        // 1. Указываем строитель для тега 'latex'
+        'latex': LatexElementBuilder(),
       },
+      // 2. Указываем расширение для парсера, чтобы он понимал LaTeX
+      extensionSet: md.ExtensionSet(
+        [LatexBlockSyntax()],   // для блочных формул
+        [LatexInlineSyntax()],  // для строчных формул
+      ),
     );
-  }
-
-  _ProcessedText _preprocess(String input) {
-    // Блочные формулы $$...$$
-    final blockRegex = RegExp(r'\$\$(.*?)\$\$', dotAll: true);
-    String text = input;
-    int counter = 0;
-    Map<int, String> blocks = {};
-    text = text.replaceAllMapped(blockRegex, (match) {
-      final formula = match.group(1)!.trim();
-      final key = counter++;
-      blocks[key] = formula;
-      return '<latex block="$key"/>';
-    });
-
-    // Строчные формулы $...$
-    final inlineRegex = RegExp(r'\$(.*?)\$');
-    Map<int, String> inlines = {};
-    text = text.replaceAllMapped(inlineRegex, (match) {
-      final formula = match.group(1)!.trim();
-      if (formula.isEmpty) return match.group(0)!;
-      final key = counter++;
-      inlines[key] = formula;
-      return '<latex inline="$key"/>';
-    });
-
-    return _ProcessedText(text, blocks: blocks, inlines: inlines);
-  }
-}
-
-class _ProcessedText {
-  final String text;
-  final Map<int, String> blocks;
-  final Map<int, String> inlines;
-
-  _ProcessedText(this.text, {required this.blocks, required this.inlines});
-}
-
-class LatexBuilder extends MarkdownElementBuilder {
-  final MarkdownStyleSheet? styleSheet;
-
-  LatexBuilder({this.styleSheet});
-
-  @override
-  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
-    final attrs = element.attributes;
-    if (attrs['block'] != null) {
-      final formula = attrs['block']!;
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Math.tex(
-          formula,
-          mathStyle: MathStyle.display,
-          textStyle: styleSheet?.p?.copyWith(fontSize: 16),
-        ),
-      );
-    } else if (attrs['inline'] != null) {
-      final formula = attrs['inline']!;
-      return Math.tex(
-        formula,
-        mathStyle: MathStyle.text,
-        textStyle: preferredStyle,
-      );
-    }
-    return null;
   }
 }
