@@ -41,9 +41,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       await ref
           .read(categoriesNotifierProvider.notifier)
           .addCategory(newCategory);
-      _nameController.clear();
-      setState(() => _selectedColor = Colors.green);
       if (mounted) {
+        _nameController.clear();
+        setState(() => _selectedColor = Colors.green);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Категория создана')),
         );
@@ -71,13 +71,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         .read(notesNotifierProvider(category: category.id, sort: 'new').future);
 
     if (notes.isNotEmpty) {
+      // Проверяем, что виджет ещё существует перед показом диалога
+      if (!mounted) return;
       final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('Удаление категории'),
           content: Text(
             'В категории "${category.name}" есть ${notes.length} заметок. '
-            'При удалении категории они тоже будут удалены. Продолжить?',
+                'При удалении категории они тоже будут удалены. Продолжить?',
           ),
           actions: [
             TextButton(
@@ -97,7 +99,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       for (final note in notes) {
         await ref
             .read(notesNotifierProvider(category: category.id).notifier)
-            .deleteNote(note.id); // note.id теперь double
+            .deleteNote(note.id);
       }
     }
 
@@ -185,13 +187,13 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                               },
                               child: Container(
                                 padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
+                                const EdgeInsets.symmetric(vertical: 12),
                                 decoration: BoxDecoration(
                                   border: Border.all(color: Colors.grey),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child:
-                                    const Center(child: Text('Выбрать цвет')),
+                                const Center(child: Text('Выбрать цвет')),
                               ),
                             ),
                           ),
@@ -235,10 +237,10 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                             cat.custom == 1 ? 'Пользовательская' : 'Системная'),
                         trailing: cat.custom == 1
                             ? IconButton(
-                                icon:
-                                    const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _deleteCategory(cat),
-                              )
+                          icon:
+                          const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _deleteCategory(cat),
+                        )
                             : null,
                       );
                     },

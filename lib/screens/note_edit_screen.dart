@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import '../widgets/markdown_with_latex.dart';
 import '../models/note.dart';
 import '../providers/notes_provider.dart';
 import '../providers/categories_provider.dart';
@@ -17,6 +19,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
   String? _selectedCategoryId;
+  bool _isPreviewMode = true;
 
   @override
   void initState() {
@@ -44,8 +47,9 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
     }
 
     final now = DateTime.now();
+    final type = _detectType(_contentController.text);
+
     final note = Note(
-      // id: double, если новая заметка – используем миллисекунды как double
       id: widget.note?.id ?? now.millisecondsSinceEpoch.toDouble(),
       title: _titleController.text.isEmpty ? null : _titleController.text,
       content: _contentController.text,
@@ -53,11 +57,11 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
       date: widget.note?.date ??
           '${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}, ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
       createdTimestamp:
-          widget.note?.createdTimestamp ?? now.millisecondsSinceEpoch,
+      widget.note?.createdTimestamp ?? now.millisecondsSinceEpoch,
       updatedTimestamp: now.millisecondsSinceEpoch,
       expanded: 0,
       editMode: 0,
-      type: _detectType(_contentController.text),
+      type: type,
       metadata: null,
     );
 
@@ -95,8 +99,17 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.note == null ? 'Новая заметка' : 'Редактировать'),
+        title: Text(widget.note == null ? 'Новая заметка' : 'Просмотр'),
         actions: [
+          IconButton(
+            icon: Icon(_isPreviewMode ? Icons.edit : Icons.visibility),
+            onPressed: () {
+              setState(() {
+                _isPreviewMode = !_isPreviewMode;
+              });
+            },
+            tooltip: _isPreviewMode ? 'Редактировать' : 'Предпросмотр',
+          ),
           IconButton(
             icon: const Icon(Icons.save),
             onPressed: _saveNote,
@@ -125,16 +138,16 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
                       labelText: 'Категория',
                       border: OutlineInputBorder(),
                     ),
-                    items: categories.map((cat) {
+                    items: categories.map((category) {
                       return DropdownMenuItem(
-                        value: cat.id,
-                        child: Text(cat.name),
+                        value: category.id,
+                        child: Text(category.name),
                       );
                     }).toList(),
                     onChanged: (value) =>
                         setState(() => _selectedCategoryId = value),
                     validator: (value) =>
-                        value == null ? 'Выберите категорию' : null,
+                    value == null ? 'Выберите категорию' : null,
                   );
                 },
                 error: (e, s) => Text('Ошибка загрузки категорий: $e'),
@@ -142,10 +155,20 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: TextFormField(
+                child: _isPreviewMode
+                    ? SingleChildScrollView(
+                  child: MarkdownWithLatex(
+                    data: _contentController.text,
+                    styleSheet: MarkdownStyleSheet.fromTheme(
+                      Theme.of(context),
+                    ),
+                    softLineBreak: true,
+                  ),
+                )
+                    : TextFormField(
                   controller: _contentController,
                   decoration: const InputDecoration(
-                    labelText: 'Текст заметки',
+                    labelText: 'Текст заметки (поддерживается Markdown и LaTeX)',
                     border: OutlineInputBorder(),
                     alignLabelWithHint: true,
                   ),

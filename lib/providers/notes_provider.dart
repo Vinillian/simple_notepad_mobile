@@ -1,8 +1,9 @@
+import 'package:flutter/foundation.dart' as foundation;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../models/note.dart';
 import '../services/local_note_service.dart';
 import '../services/note_service.dart';
-import '../services/link_metadata_service.dart'; // новый импорт
+import '../services/link_metadata_service.dart';
 import '../utils/merge_helper.dart';
 import 'categories_provider.dart';
 
@@ -33,7 +34,6 @@ class NotesNotifier extends _$NotesNotifier {
     ref.invalidate(categoryNotesCountProvider);
     _syncNoteToRemote(note);
 
-    // Если заметка является ссылкой, асинхронно загружаем метаданные
     if (note.type == 'link') {
       _fetchAndUpdateMetadata(note.id, note.content);
     }
@@ -45,7 +45,6 @@ class NotesNotifier extends _$NotesNotifier {
     ref.invalidate(categoryNotesCountProvider);
     _updateNoteRemote(note);
 
-    // Если это ссылка и метаданные не заданы, можно обновить (по желанию)
     if (note.type == 'link' &&
         (note.metadata == null || note.metadata!.isEmpty)) {
       _fetchAndUpdateMetadata(note.id, note.content);
@@ -97,30 +96,31 @@ class NotesNotifier extends _$NotesNotifier {
         await _remoteService.createNote(note);
       }
     } catch (e) {
-      // Ошибка сети — игнорируем
+      foundation.debugPrint('_syncNoteToRemote error: $e');
     }
   }
 
   Future<void> _updateNoteRemote(Note note) async {
     try {
       await _remoteService.updateNote(note.id, note);
-    } catch (e) {}
+    } catch (e) {
+      foundation.debugPrint('_updateNoteRemote error: $e');
+    }
   }
 
   Future<void> _deleteNoteRemote(double id) async {
     try {
       await _remoteService.deleteNote(id);
-    } catch (e) {}
+    } catch (e) {
+      foundation.debugPrint('_deleteNoteRemote error: $e');
+    }
   }
 
-  // Новый метод для асинхронной загрузки метаданных
   Future<void> _fetchAndUpdateMetadata(double noteId, String url) async {
     final metadata = await LinkMetadataService.fetchMetadata(url);
     if (metadata.isNotEmpty) {
-      // Получаем текущую заметку из локальной БД, чтобы не потерять другие поля
       final note = await _localService.getNoteById(noteId);
       if (note != null) {
-        // Обновляем метаданные
         final updatedNote = Note(
           id: note.id,
           title: note.title,
@@ -133,12 +133,11 @@ class NotesNotifier extends _$NotesNotifier {
           editMode: note.editMode,
           type: note.type,
           metadata: metadata,
+          previewText: note.previewText,
         );
         await _localService.updateNote(updatedNote);
-        // Обновляем UI
         await refresh(category: category, sort: sort);
         ref.invalidate(categoryNotesCountProvider);
-        // Также синхронизируем с сервером, если нужно
         _updateNoteRemote(updatedNote);
       }
     }

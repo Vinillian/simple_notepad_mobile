@@ -24,7 +24,7 @@ final categoryNotesCountProvider = AutoDisposeAsyncNotifierProvider<
 
 typedef _$CategoryNotesCount = AutoDisposeAsyncNotifier<Map<String, int>>;
 String _$categoriesNotifierHash() =>
-    r'7bbf630d25198c918aac7d1716270a351a4a5776';
+    r'59fb0aaf9355771904a7124e352d1cd797557292';
 
 /// See also [CategoriesNotifier].
 @ProviderFor(CategoriesNotifier)

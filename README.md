@@ -1,16 +1,34 @@
 # simple_notepad_mobile
 
-A new Flutter project.
+Приложение для заметок с поддержкой Markdown, категорий, синхронизации с сервером и резервного копирования.
 
-## Getting Started
+## Возможности
 
-This project is a starting point for a Flutter application.
+- Создание, редактирование и удаление заметок
+- **Поддержка Markdown** при отображении и предпросмотр в редакторе
+- Автоматическое определение ссылок и отображение превью с метаданными
+- Категории с настраиваемыми цветами
+- Локальное хранение (SQLite)
+- Синхронизация с REST API (опционально)
+- Экспорт и импорт данных в формате JSON
 
-A few resources to get you started if this is your first Flutter project:
+## Начало работы
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+1. Клонируйте репозиторий
+2. Выполните `flutter pub get`
+3. Запустите приложение: `flutter run`
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Для настройки синхронизации укажите URL API через `--dart-define=API_URL=...`
+
+## Используемые технологии
+
+- Flutter
+- Riverpod (состояние)
+- SQLite (sqflite)
+- HTTP (http)
+- Markdown (flutter_markdown)
+- Cached Network Image
+
+## Лицензия
+
+MIT

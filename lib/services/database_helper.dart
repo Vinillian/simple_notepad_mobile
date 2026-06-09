@@ -21,13 +21,13 @@ class DatabaseHelper {
     String path = join(documentsDirectory.path, 'notepad.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // увеличили версию
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
   Future _onCreate(Database db, int version) async {
-    // Таблица категорий
     await db.execute('''
       CREATE TABLE categories(
         id TEXT PRIMARY KEY,
@@ -37,10 +37,9 @@ class DatabaseHelper {
       )
     ''');
 
-    // Таблица заметок – id теперь REAL (для хранения double)
     await db.execute('''
       CREATE TABLE notes(
-        id REAL PRIMARY KEY,  -- изменено с INTEGER на REAL
+        id REAL PRIMARY KEY,
         title TEXT,
         content TEXT NOT NULL,
         category_id TEXT NOT NULL,
@@ -50,11 +49,11 @@ class DatabaseHelper {
         expanded INTEGER NOT NULL,
         edit_mode INTEGER NOT NULL,
         type TEXT NOT NULL,
-        metadata TEXT
+        metadata TEXT,
+        preview_text TEXT
       )
     ''');
 
-    // Таблица настроек
     await db.execute('''
       CREATE TABLE settings(
         id INTEGER PRIMARY KEY DEFAULT 1,
@@ -62,6 +61,13 @@ class DatabaseHelper {
         view_mode TEXT NOT NULL
       )
     ''');
+  }
+
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Добавляем поле preview_text, если его нет
+      await db.execute('ALTER TABLE notes ADD COLUMN preview_text TEXT');
+    }
   }
 
   Future<void> close() async {

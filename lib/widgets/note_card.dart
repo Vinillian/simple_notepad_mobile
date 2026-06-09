@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'markdown_with_latex.dart';
 import '../models/note.dart';
 
 class NoteCard extends StatelessWidget {
@@ -44,11 +46,9 @@ class NoteCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Верхняя строка: иконка, favicon, заголовок, кнопка редактирования, дата
               Row(
                 children: [
                   if (isLink) ...[
-                    // Если есть favicon – показываем его, иначе стандартную иконку
                     if (faviconUrl != null && faviconUrl.isNotEmpty)
                       CachedNetworkImage(
                         imageUrl: faviconUrl,
@@ -65,35 +65,34 @@ class NoteCard extends StatelessWidget {
                   Expanded(
                     child: isLink
                         ? GestureDetector(
-                            onTap: _launchUrl,
-                            child: Text(
-                              note.title ?? 'Открыть ссылку',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.primary,
-                                decoration: TextDecoration.underline,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          )
+                      onTap: _launchUrl,
+                      child: Text(
+                        note.title ?? 'Открыть ссылку',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                          decoration: TextDecoration.underline,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    )
                         : Text(
-                            note.title ?? 'Без заголовка',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      note.title ?? 'Без заголовка',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  // Кнопка редактирования (для всех заметок)
                   if (onEdit != null)
                     IconButton(
                       icon: const Icon(Icons.edit, size: 18),
                       onPressed: onEdit,
                       tooltip: 'Редактировать',
                       constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                      const BoxConstraints(minWidth: 32, minHeight: 32),
                       padding: EdgeInsets.zero,
                     ),
                   Text(
@@ -106,7 +105,6 @@ class NoteCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
 
-              // Содержимое (для ссылок – изображение + описание)
               if (isLink) ...[
                 if (imageUrl != null && imageUrl.isNotEmpty)
                   ClipRRect(
@@ -117,9 +115,9 @@ class NoteCard extends StatelessWidget {
                       width: double.infinity,
                       fit: BoxFit.cover,
                       placeholder: (context, url) =>
-                          const Center(child: CircularProgressIndicator()),
+                      const Center(child: CircularProgressIndicator()),
                       errorWidget: (context, url, error) =>
-                          const Icon(Icons.broken_image, size: 50),
+                      const Icon(Icons.broken_image, size: 50),
                     ),
                   ),
                 if (metadata['title'] != null && metadata['title'].isNotEmpty)
@@ -145,7 +143,6 @@ class NoteCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                // Отображаем домен
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: GestureDetector(
@@ -159,19 +156,26 @@ class NoteCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              ] else ...[
-                // Обычная заметка
-                Text(
-                  note.content,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+              ] else
+              // Обычная заметка – Markdown + LaTeX
+                SizedBox(
+                  height: 70,
+                  child: ClipRect(
+                    child: SingleChildScrollView(
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: MarkdownWithLatex(
+                        data: note.content,
+                        styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+                          p: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                          ),
+                        ),
+                        softLineBreak: true,
+                      ),
+                    ),
                   ),
                 ),
-              ],
 
-              // Кнопка удаления
               if (onDelete != null) ...[
                 const SizedBox(height: 8),
                 Align(

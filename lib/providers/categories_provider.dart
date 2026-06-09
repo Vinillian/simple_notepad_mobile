@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' as foundation;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../models/category.dart';
 import '../services/local_category_service.dart';
@@ -88,12 +89,16 @@ class CategoriesNotifier extends _$CategoriesNotifier {
       if (!remoteCategories.any((c) => c.id == category.id)) {
         await _remoteService.createCategory(category);
       }
-    } catch (e) {}
+    } catch (e) {
+      foundation.debugPrint('_syncCategoryToRemote error: $e');
+    }
   }
 
   Future<void> _deleteCategoryFromRemote(String id) async {
     try {
       await _remoteService.deleteCategory(id);
-    } catch (e) {}
+    } catch (e) {
+      foundation.debugPrint('_deleteCategoryFromRemote error: $e');
+    }
   }
 }
