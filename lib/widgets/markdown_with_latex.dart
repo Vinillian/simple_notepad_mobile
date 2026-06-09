@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
-// Импортируем основной пакет markdown для работы с ExtensionSet
 import 'package:markdown/markdown.dart' as md;
 
 class MarkdownWithLatex extends StatelessWidget {
@@ -16,20 +15,40 @@ class MarkdownWithLatex extends StatelessWidget {
     this.softLineBreak = true,
   });
 
+  /// Преобразует старый синтаксис LaTeX в формат, понятный flutter_markdown_latex.
+  /// \( ... \) → $ ... $
+  /// \[ ... \] → $$ ... $$
+  String _preprocess(String input) {
+    // Блочные формулы \[ ... \] → $$ ... $$
+    final blockRegex = RegExp(r'\\\[(.*?)\\\]', dotAll: true);
+    String result = input.replaceAllMapped(blockRegex, (match) {
+      String formula = match.group(1)!.trim();
+      return '\$\$$formula\$\$';
+    });
+
+    // Строчные формулы \( ... \) → $ ... $
+    final inlineRegex = RegExp(r'\\\((.*?)\\\)', dotAll: true);
+    result = result.replaceAllMapped(inlineRegex, (match) {
+      String formula = match.group(1)!.trim();
+      return '\$$formula\$';
+    });
+
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final processedText = _preprocess(data);
     return MarkdownBody(
-      data: data,
+      data: processedText,
       styleSheet: styleSheet,
       softLineBreak: softLineBreak,
       builders: {
-        // 1. Указываем строитель для тега 'latex'
         'latex': LatexElementBuilder(),
       },
-      // 2. Указываем расширение для парсера, чтобы он понимал LaTeX
       extensionSet: md.ExtensionSet(
-        [LatexBlockSyntax()],   // для блочных формул
-        [LatexInlineSyntax()],  // для строчных формул
+        [LatexBlockSyntax()],
+        [LatexInlineSyntax()],
       ),
     );
   }
