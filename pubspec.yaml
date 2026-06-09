@@ -30,10 +30,10 @@ dependencies:
   # Images
   cached_network_image: ^3.3.1
 
-  # Markdown & LaTeX
+  # Markdown & LaTeX – стабильные пакеты
   flutter_markdown: ^0.7.7+1
   flutter_markdown_latex: ^0.3.4
-  flutter_math_fork: ^0.7.2
+  flutter_math_fork: ^0.7.4
   markdown: ^7.1.1
 
 dev_dependencies:

@@ -15,40 +15,57 @@ class MarkdownWithLatex extends StatelessWidget {
     this.softLineBreak = true,
   });
 
-  /// Преобразует старый синтаксис LaTeX в формат, понятный flutter_markdown_latex.
-  /// \( ... \) → $ ... $
-  /// \[ ... \] → $$ ... $$
-  String _preprocess(String input) {
-    // Блочные формулы \[ ... \] → $$ ... $$
-    final blockRegex = RegExp(r'\\\[(.*?)\\\]', dotAll: true);
-    String result = input.replaceAllMapped(blockRegex, (match) {
-      String formula = match.group(1)!.trim();
-      return '\$\$$formula\$\$';
-    });
+  /// Удаляет экранирование перед одиночными латинскими буквами
+  String _cleanEscapedLetters(String input) {
+    return input.replaceAllMapped(
+      RegExp(r'\\([A-Za-z])(?![A-Za-z])'),
+          (match) => match.group(1)!,
+    );
+  }
 
-    // Строчные формулы \( ... \) → $ ... $
-    final inlineRegex = RegExp(r'\\\((.*?)\\\)', dotAll: true);
-    result = result.replaceAllMapped(inlineRegex, (match) {
-      String formula = match.group(1)!.trim();
-      return '\$$formula\$';
+  /// Преобразует устаревший синтаксис LaTeX
+  String _convertOldSyntax(String input) {
+    String result = input;
+    result = result.replaceAllMapped(RegExp(r'\\\[(.*?)\\\]', dotAll: true), (match) {
+      return '\$\$${match.group(1)!.trim()}\$\$';
     });
-
+    result = result.replaceAllMapped(RegExp(r'\\\((.*?)\\\)', dotAll: true), (match) {
+      return '\$${match.group(1)!.trim()}\$';
+    });
     return result;
+  }
+
+  /// Вставляет пробел перед знаком препинания после формулы
+  String _fixPunctuationAfterDollar(String input) {
+    return input.replaceAllMapped(
+      RegExp(r'(\$[^\$]*\$)([;,.\)\]\}])'),
+          (match) => '${match.group(1)} ${match.group(2)}',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final processedText = _preprocess(data);
+    String processed = _cleanEscapedLetters(data);
+    processed = _convertOldSyntax(processed);
+    processed = _fixPunctuationAfterDollar(processed);
+
     return MarkdownBody(
-      data: processedText,
+      data: processed,
       styleSheet: styleSheet,
       softLineBreak: softLineBreak,
       builders: {
         'latex': LatexElementBuilder(),
       },
+      // Объединяем стандартный GFM (таблицы, зачёркивание) с LaTeX-синтаксисами
       extensionSet: md.ExtensionSet(
-        [LatexBlockSyntax()],
-        [LatexInlineSyntax()],
+        [
+          ...md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+          LatexBlockSyntax(),
+        ],
+        [
+          ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
+          LatexInlineSyntax(),
+        ],
       ),
     );
   }
