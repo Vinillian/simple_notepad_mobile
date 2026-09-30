@@ -8,7 +8,11 @@ import '../providers/categories_provider.dart';
 
 class NoteEditScreen extends ConsumerStatefulWidget {
   final Note? note;
-  const NoteEditScreen({super.key, this.note});
+
+  /// Category preselected for a new note (e.g. the filter active on the home screen).
+  final String? initialCategoryId;
+
+  const NoteEditScreen({super.key, this.note, this.initialCategoryId});
 
   @override
   ConsumerState<NoteEditScreen> createState() => _NoteEditScreenState();
@@ -19,7 +23,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
   String? _selectedCategoryId;
-  bool _isPreviewMode = true;
+  late bool _isPreviewMode;
 
   @override
   void initState() {
@@ -28,6 +32,19 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
     _contentController =
         TextEditingController(text: widget.note?.content ?? '');
     _selectedCategoryId = widget.note?.categoryId;
+
+    // A new note starts in edit mode; existing notes open in preview mode.
+    _isPreviewMode = widget.note != null;
+
+    if (widget.note == null) {
+      _selectedCategoryId = widget.initialCategoryId ?? _firstCategoryId();
+    }
+  }
+
+  String? _firstCategoryId() {
+    final categories = ref.read(categoriesNotifierProvider).valueOrNull;
+    if (categories == null || categories.isEmpty) return null;
+    return categories.first.id;
   }
 
   @override
@@ -39,6 +56,17 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
 
   Future<void> _saveNote() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // The content field is not in the widget tree in preview mode, so its
+    // validator does not run there. Check the content explicitly.
+    if (_contentController.text.trim().isEmpty) {
+      setState(() => _isPreviewMode = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Введите текст')),
+      );
+      return;
+    }
+
     if (_selectedCategoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Выберите категорию')),
@@ -99,7 +127,11 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.note == null ? 'Новая заметка' : 'Просмотр'),
+        title: Text(
+          widget.note == null
+              ? 'Новая заметка'
+              : (_isPreviewMode ? 'Просмотр' : 'Редактирование'),
+        ),
         actions: [
           IconButton(
             icon: Icon(_isPreviewMode ? Icons.edit : Icons.visibility),
@@ -167,6 +199,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
                 )
                     : TextFormField(
                   controller: _contentController,
+                  autofocus: true,
                   decoration: const InputDecoration(
                     labelText: 'Текст заметки (поддерживается Markdown и LaTeX)',
                     border: OutlineInputBorder(),

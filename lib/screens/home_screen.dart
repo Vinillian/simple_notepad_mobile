@@ -310,7 +310,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onPressed: () async {
           final result = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const NoteEditScreen()),
+            MaterialPageRoute(
+              builder: (_) =>
+                  NoteEditScreen(initialCategoryId: selectedCategory),
+            ),
           );
           if (result == true) {
             ref.invalidate(notesNotifierProvider);
