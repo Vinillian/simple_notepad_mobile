@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/category.dart';
+import '../utils/helpers.dart';
 
 class CategoryChip extends StatelessWidget {
   final Category category;
@@ -15,17 +16,16 @@ class CategoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = hexToColor(category.color);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected
-              ? Color(int.parse(category.color.substring(1), radix: 16) + 0xFF000000)
-              : Colors.grey[200],
+          color: isSelected ? color : Colors.grey[200],
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Color(int.parse(category.color.substring(1), radix: 16) + 0xFF000000),
+            color: color,
             width: 1,
           ),
         ),
