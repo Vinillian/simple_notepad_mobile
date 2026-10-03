@@ -8,6 +8,9 @@ class DatabaseHelper {
   factory DatabaseHelper() => _instance;
   DatabaseHelper._internal();
 
+  /// Key in the `app_meta` table that marks the first-run setup as done.
+  static const String setupCompleteKey = 'setup_complete';
+
   static Database? _database;
 
   Future<Database> get database async {
@@ -21,7 +24,7 @@ class DatabaseHelper {
     String path = join(documentsDirectory.path, 'notepad.db');
     return await openDatabase(
       path,
-      version: 2, // увеличили версию
+      version: 3, // v3: добавлена таблица app_meta
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -61,12 +64,37 @@ class DatabaseHelper {
         view_mode TEXT NOT NULL
       )
     ''');
+
+    await _createAppMetaTable(db);
+  }
+
+  Future<void> _createAppMetaTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS app_meta(
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )
+    ''');
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       // Добавляем поле preview_text, если его нет
       await db.execute('ALTER TABLE notes ADD COLUMN preview_text TEXT');
+    }
+    if (oldVersion < 3) {
+      await _createAppMetaTable(db);
+      // Existing installs that already have categories have finished setup.
+      final count = Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM categories'),
+      );
+      if ((count ?? 0) > 0) {
+        await db.insert(
+          'app_meta',
+          {'key': setupCompleteKey, 'value': '1'},
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
     }
   }
 

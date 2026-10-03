@@ -9,6 +9,7 @@ import 'note_edit_screen.dart';
 import 'categories_screen.dart';
 import 'backup_screen.dart';
 import 'initial_setup_screen.dart';
+import '../services/local_app_state_service.dart';
 import '../services/local_category_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -27,17 +28,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _checkIfEmpty();
+    _checkFirstRun();
   }
 
-  Future<void> _checkIfEmpty() async {
-    final localCategoryService = LocalCategoryService();
-    final categories = await localCategoryService.getCategories();
-    if (categories.isEmpty && mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const InitialSetupScreen()),
-      );
+  /// Shows the welcome screen only on the very first launch.
+  /// Having no categories is not enough: the user may have deleted them all.
+  Future<void> _checkFirstRun() async {
+    final appState = LocalAppStateService();
+    if (await appState.isSetupComplete()) return;
+
+    final categories = await LocalCategoryService().getCategories();
+    if (categories.isNotEmpty) {
+      // Data already exists, so the setup was effectively done.
+      await appState.markSetupComplete();
+      return;
     }
+
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const InitialSetupScreen()),
+    );
   }
 
   @override

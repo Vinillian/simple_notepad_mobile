@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'home_screen.dart'; // исправлен импорт
+import '../models/category.dart';
 import '../providers/categories_provider.dart';
 import '../providers/notes_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/backup_service.dart';
+import '../services/local_app_state_service.dart';
 import '../services/local_category_service.dart'; // добавлен
 import '../services/local_note_service.dart'; // добавлен
 import '../services/local_settings_service.dart'; // добавлен
@@ -36,8 +38,8 @@ class _InitialSetupScreenState extends ConsumerState<InitialSetupScreen> {
             const SizedBox(height: 32),
             const Text(
               'Похоже, у вас ещё нет данных. '
-              'Вы можете создать новую базу, импортировать из файла '
-              'или загрузить данные с сервера, если доступно соединение.',
+                  'Вы можете создать новую базу, импортировать из файла '
+                  'или загрузить данные с сервера, если доступно соединение.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16),
             ),
@@ -75,7 +77,35 @@ class _InitialSetupScreenState extends ConsumerState<InitialSetupScreen> {
     );
   }
 
-  void _createNewDatabase() {
+  Future<void> _createNewDatabase() async {
+    setState(() => _isLoading = true);
+    try {
+      await _finishSetup();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка создания базы: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Completes the first-run setup: guarantees that at least one category
+  /// exists, remembers that setup is done and opens the home screen.
+  Future<void> _finishSetup() async {
+    final categoryService = LocalCategoryService();
+    final categories = await categoryService.getCategories();
+    if (categories.isEmpty) {
+      await categoryService.createCategory(
+        Category(id: 'general', name: 'Общее', color: '#4CAF50', custom: 0),
+      );
+    }
+    await LocalAppStateService().markSetupComplete();
+
+    ref.invalidate(categoriesNotifierProvider);
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const HomeScreen()),
     );
@@ -107,11 +137,7 @@ class _InitialSetupScreenState extends ConsumerState<InitialSetupScreen> {
       }
       await localSettingsService.updateSettings(backup.settings);
 
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
-      }
+      await _finishSetup();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -119,7 +145,7 @@ class _InitialSetupScreenState extends ConsumerState<InitialSetupScreen> {
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -145,11 +171,7 @@ class _InitialSetupScreenState extends ConsumerState<InitialSetupScreen> {
           .syncWithRemote();
       await ref.read(settingsNotifierProvider.notifier).syncWithRemote();
 
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
-      }
+      await _finishSetup();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -157,7 +179,7 @@ class _InitialSetupScreenState extends ConsumerState<InitialSetupScreen> {
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 }
