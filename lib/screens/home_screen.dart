@@ -10,6 +10,7 @@ import 'categories_screen.dart';
 import 'backup_screen.dart';
 import 'initial_setup_screen.dart';
 import '../services/local_app_state_service.dart';
+import '../utils/helpers.dart';
 import '../services/local_category_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -173,9 +174,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               height: 16,
                               margin: const EdgeInsets.only(right: 8),
                               decoration: BoxDecoration(
-                                color: Color(int.parse(category.color.substring(1),
-                                    radix: 16) +
-                                    0xFF000000),
+                                color: hexToColor(category.color),
                                 shape: BoxShape.circle,
                               ),
                             ),
