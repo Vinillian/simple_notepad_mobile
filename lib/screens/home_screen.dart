@@ -350,13 +350,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
       }
     } catch (e) {
+      debugPrint('Sync failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка синхронизации: $e')),
+          const SnackBar(
+            content: Text(
+              'Не удалось синхронизировать: сервер недоступен. '
+              'Локальные заметки не изменены.',
+            ),
+          ),
         );
       }
     } finally {
-      setState(() => _isSyncing = false);
+      if (mounted) setState(() => _isSyncing = false);
     }
   }
 }

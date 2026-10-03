@@ -58,35 +58,37 @@ class NotesNotifier extends _$NotesNotifier {
     _deleteNoteRemote(id);
   }
 
+  /// Merges local and remote notes.
+  ///
+  /// Network errors are rethrown to the caller and do not touch [state], so a
+  /// failed sync never replaces the local list with an error.
   Future<void> syncWithRemote() async {
     final currentCategory = category;
     final currentSort = sort;
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      final localNotes = await _localService.getNotes();
-      final remoteNotes = await _remoteService.getNotes();
 
-      final toAddToRemote = MergeHelper.findNewNotes(
-        current: remoteNotes,
-        imported: localNotes,
-      );
-      for (final note in toAddToRemote) {
-        await _remoteService.createNote(note);
-      }
+    final localNotes = await _localService.getNotes();
+    final remoteNotes = await _remoteService.getNotes();
 
-      final toAddToLocal = MergeHelper.findNewNotes(
-        current: localNotes,
-        imported: remoteNotes,
-      );
-      if (toAddToLocal.isNotEmpty) {
-        await _localService.insertAll(toAddToLocal);
-      }
+    final toAddToRemote = MergeHelper.findNewNotes(
+      current: remoteNotes,
+      imported: localNotes,
+    );
+    for (final note in toAddToRemote) {
+      await _remoteService.createNote(note);
+    }
 
-      ref.invalidate(categoryNotesCountProvider);
+    final toAddToLocal = MergeHelper.findNewNotes(
+      current: localNotes,
+      imported: remoteNotes,
+    );
+    if (toAddToLocal.isNotEmpty) {
+      await _localService.insertAll(toAddToLocal);
+    }
 
-      return await _localService.getNotes(
-          category: currentCategory, sort: currentSort);
-    });
+    ref.invalidate(categoryNotesCountProvider);
+
+    state = AsyncValue.data(await _localService.getNotes(
+        category: currentCategory, sort: currentSort));
   }
 
   Future<void> _syncNoteToRemote(Note note) async {

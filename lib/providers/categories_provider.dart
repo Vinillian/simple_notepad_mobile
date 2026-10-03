@@ -56,31 +56,32 @@ class CategoriesNotifier extends _$CategoriesNotifier {
     _deleteCategoryFromRemote(id);
   }
 
+  /// Merges local and remote categories.
+  ///
+  /// Network errors are rethrown to the caller and do not touch [state], so a
+  /// failed sync never replaces the local list with an error.
   Future<void> syncWithRemote() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      final localCategories = await _localService.getCategories();
-      final remoteCategories = await _remoteService.getCategories();
+    final localCategories = await _localService.getCategories();
+    final remoteCategories = await _remoteService.getCategories();
 
-      final toAddToRemote = MergeHelper.findNewCategories(
-        current: remoteCategories,
-        imported: localCategories,
-      );
-      for (final cat in toAddToRemote) {
-        await _remoteService.createCategory(cat);
-      }
+    final toAddToRemote = MergeHelper.findNewCategories(
+      current: remoteCategories,
+      imported: localCategories,
+    );
+    for (final cat in toAddToRemote) {
+      await _remoteService.createCategory(cat);
+    }
 
-      final toAddToLocal = MergeHelper.findNewCategories(
-        current: localCategories,
-        imported: remoteCategories,
-      );
-      if (toAddToLocal.isNotEmpty) {
-        await _localService.insertAll(toAddToLocal);
-      }
+    final toAddToLocal = MergeHelper.findNewCategories(
+      current: localCategories,
+      imported: remoteCategories,
+    );
+    if (toAddToLocal.isNotEmpty) {
+      await _localService.insertAll(toAddToLocal);
+    }
 
-      ref.invalidate(categoryNotesCountProvider);
-      return await _localService.getCategories();
-    });
+    ref.invalidate(categoryNotesCountProvider);
+    state = AsyncValue.data(await _localService.getCategories());
   }
 
   Future<void> _syncCategoryToRemote(Category category) async {
