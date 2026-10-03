@@ -24,11 +24,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String sortOrder = 'new';
   bool _isSyncing = false;
   String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _checkFirstRun();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   /// Shows the welcome screen only on the very first launch.
@@ -104,6 +111,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: TextField(
+              controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Поиск по заголовку или тексту...',
                 prefixIcon: const Icon(Icons.search),
@@ -111,6 +119,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ? IconButton(
                   icon: const Icon(Icons.clear),
                   onPressed: () {
+                    _searchController.clear();
                     setState(() {
                       _searchQuery = '';
                     });
