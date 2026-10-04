@@ -1,13 +1,26 @@
 import 'package:flutter/material.dart';
 
-Color hexToColor(String hex) {
-  final buffer = StringBuffer();
-  if (hex.length == 6 || hex.length == 7) {
-    buffer.write(hex.replaceFirst('#', ''));
-  } else {
-    return Colors.grey;
+/// Normalizes a color string to the `#RRGGBB` form (upper case).
+///
+/// Accepts `RGB` and `RRGGBB` with or without the leading `#`.
+/// Returns `null` if [value] is not a valid hex color.
+String? normalizeHexColor(String? value) {
+  if (value == null) return null;
+  var hex = value.trim();
+  if (hex.startsWith('#')) hex = hex.substring(1);
+  if (hex.length == 3) {
+    hex = hex.split('').map((c) => '$c$c').join();
   }
-  return Color(int.parse(buffer.toString(), radix: 16) + 0xFF000000);
+  if (!RegExp(r'^[0-9a-fA-F]{6}$').hasMatch(hex)) return null;
+  return '#${hex.toUpperCase()}';
+}
+
+/// Converts a hex color string to a [Color]; returns [fallback] if the
+/// string is malformed instead of throwing.
+Color hexToColor(String hex, {Color fallback = Colors.grey}) {
+  final normalized = normalizeHexColor(hex);
+  if (normalized == null) return fallback;
+  return Color(int.parse(normalized.substring(1), radix: 16) + 0xFF000000);
 }
 
 bool isValidUrl(String text) {

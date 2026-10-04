@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import '../models/note.dart';
 import '../models/category.dart';
 import '../models/settings.dart';
+import '../utils/helpers.dart';
 
 class BackupData {
   final List<Note> notes;
@@ -163,9 +164,8 @@ class BackupData {
         if (map['name'] == null) {
           map['name'] = 'Без названия';
         }
-        if (map['color'] == null) {
-          map['color'] = '#4CAF50';
-        }
+        // Fall back to the default green if the color is missing or malformed.
+        map['color'] = normalizeHexColor(map['color']?.toString()) ?? '#4CAF50';
         if (map['custom'] is bool) {
           map['custom'] = (map['custom'] as bool) ? 1 : 0;
         } else if (map['custom'] == null) {

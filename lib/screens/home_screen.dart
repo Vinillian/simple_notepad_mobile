@@ -10,6 +10,7 @@ import 'categories_screen.dart';
 import 'backup_screen.dart';
 import 'initial_setup_screen.dart';
 import '../services/local_app_state_service.dart';
+import '../utils/helpers.dart';
 import '../services/local_category_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -24,11 +25,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String sortOrder = 'new';
   bool _isSyncing = false;
   String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _checkFirstRun();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   /// Shows the welcome screen only on the very first launch.
@@ -104,6 +112,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: TextField(
+              controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Поиск по заголовку или тексту...',
                 prefixIcon: const Icon(Icons.search),
@@ -111,6 +120,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ? IconButton(
                   icon: const Icon(Icons.clear),
                   onPressed: () {
+                    _searchController.clear();
                     setState(() {
                       _searchQuery = '';
                     });
@@ -164,9 +174,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               height: 16,
                               margin: const EdgeInsets.only(right: 8),
                               decoration: BoxDecoration(
-                                color: Color(int.parse(category.color.substring(1),
-                                    radix: 16) +
-                                    0xFF000000),
+                                color: hexToColor(category.color),
                                 shape: BoxShape.circle,
                               ),
                             ),

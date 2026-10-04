@@ -5,6 +5,7 @@ import '../widgets/markdown_with_latex.dart';
 import '../models/note.dart';
 import '../providers/notes_provider.dart';
 import '../providers/categories_provider.dart';
+import '../utils/note_helper.dart';
 
 class NoteEditScreen extends ConsumerStatefulWidget {
   final Note? note;
@@ -77,20 +78,13 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
     final now = DateTime.now();
     final type = _detectType(_contentController.text);
 
-    final note = Note(
-      id: widget.note?.id ?? now.millisecondsSinceEpoch.toDouble(),
-      title: _titleController.text.isEmpty ? null : _titleController.text,
+    final note = buildNoteForSave(
+      original: widget.note,
+      title: _titleController.text,
       content: _contentController.text,
       categoryId: _selectedCategoryId!,
-      date: widget.note?.date ??
-          '${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}, ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
-      createdTimestamp:
-      widget.note?.createdTimestamp ?? now.millisecondsSinceEpoch,
-      updatedTimestamp: now.millisecondsSinceEpoch,
-      expanded: 0,
-      editMode: 0,
       type: type,
-      metadata: null,
+      now: now,
     );
 
     try {
