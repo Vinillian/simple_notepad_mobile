@@ -22,9 +22,11 @@
 
 Для настройки синхронизации укажите URL API через `--dart-define=API_URL=...`. По умолчанию используется `http://10.0.2.2:3000/api` (адрес хоста для Android-эмулятора). Готового сервера в репозитории нет, приложение полностью работает и без него.
 
+Открытый `http://` разрешён только для `10.0.2.2`, `localhost` и `127.0.0.1` (разработка на эмуляторе), для любого другого адреса нужен `https://`. Чтобы проверить сервер в локальной сети по `http://`, добавьте его адрес в `android/app/src/main/res/xml/network_security_config.xml` и пересоберите приложение. Картинки превью с сайтов, которые отдаются только по `http://`, не загружаются, вместо них показывается значок.
+
 ```
-flutter run --dart-define=API_URL=http://192.168.1.135:3000/api
-flutter build apk --release --dart-define=API_URL=http://192.168.1.135:3000/api
+flutter run --dart-define=API_URL=https://notes.example.com/api
+flutter build apk --release --dart-define=API_URL=https://notes.example.com/api
 ```
 
 ## Разработка
