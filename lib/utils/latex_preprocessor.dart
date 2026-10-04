@@ -1,5 +1,5 @@
-/// Text pre-processing applied to a note before it is rendered as Markdown
-/// with LaTeX formulas.
+// Text pre-processing applied to a note before it is rendered as Markdown
+// with LaTeX formulas.
 
 /// Удаляет экранирование перед одиночными латинскими буквами
 String cleanEscapedLetters(String input) {
