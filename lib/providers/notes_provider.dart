@@ -4,6 +4,7 @@ import '../models/note.dart';
 import '../services/local_note_service.dart';
 import '../services/note_service.dart';
 import '../services/link_metadata_service.dart';
+import '../services/local_app_state_service.dart';
 import '../utils/merge_helper.dart';
 import 'categories_provider.dart';
 
@@ -13,6 +14,7 @@ part 'notes_provider.g.dart';
 class NotesNotifier extends _$NotesNotifier {
   late final LocalNoteService _localService = LocalNoteService();
   late final NoteService _remoteService = NoteService();
+  late final LocalAppStateService _appState = LocalAppStateService();
 
   @override
   Future<List<Note>> build({String? category, String sort = 'new'}) async {
@@ -119,6 +121,9 @@ class NotesNotifier extends _$NotesNotifier {
   }
 
   Future<void> _fetchAndUpdateMetadata(String noteId, String url) async {
+    // The user can turn previews off: then the URL is not sent to microlink.io.
+    if (!await _appState.isLinkPreviewEnabled()) return;
+
     final metadata = await LinkMetadataService.fetchMetadata(url);
     if (metadata.isNotEmpty) {
       final note = await _localService.getNoteById(noteId);
