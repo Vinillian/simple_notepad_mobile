@@ -1,0 +1,56 @@
+import '../models/note.dart';
+import 'helpers.dart';
+
+/// Builds the note to save from the edit form.
+///
+/// When [original] is given, the fields the form does not edit (`expanded`,
+/// `editMode`, link `metadata`, `previewText`) are carried over from it.
+/// Metadata and preview text describe the content, so they are dropped only
+/// when the content really changed; a null metadata makes the notes provider
+/// fetch it again for the new link.
+Note buildNoteForSave({
+  Note? original,
+  required String title,
+  required String content,
+  required String categoryId,
+  required String type,
+  required DateTime now,
+}) {
+  final timestamp = now.millisecondsSinceEpoch;
+  final contentChanged =
+      original == null || original.content.trim() != content.trim();
+
+  return Note(
+    id: original?.id ?? timestamp.toDouble(),
+    title: title.isEmpty ? null : title,
+    content: content,
+    categoryId: categoryId,
+    date: original?.date ?? formatTimestamp(timestamp),
+    createdTimestamp: original?.createdTimestamp ?? timestamp,
+    updatedTimestamp: timestamp,
+    expanded: original?.expanded ?? 0,
+    editMode: original?.editMode ?? 0,
+    type: type,
+    metadata: contentChanged ? null : original.metadata,
+    previewText: contentChanged ? null : original.previewText,
+  );
+}
+
+/// Title shown in the header of a link card: the note's own title, then the
+/// page title from the fetched metadata, then the domain of [url].
+String linkCardTitle({
+  String? title,
+  Map<String, dynamic>? metadata,
+  required String url,
+}) {
+  final own = title?.trim();
+  if (own != null && own.isNotEmpty) return own;
+
+  final fetched = metadata?['title'];
+  if (fetched is String && fetched.trim().isNotEmpty) return fetched.trim();
+
+  final domain = extractDomain(url);
+  if (domain != null && domain.isNotEmpty) return domain;
+
+  return 'Открыть ссылку';
+}
