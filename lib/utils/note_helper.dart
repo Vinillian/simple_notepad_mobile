@@ -58,3 +58,13 @@ String linkCardTitle({
 
   return 'Открыть ссылку';
 }
+
+/// The URL to open for a link note, or null when the content is not a usable
+/// http(s) URL. Surrounding whitespace, such as a trailing newline typed in the
+/// editor, is ignored.
+Uri? linkUriFromContent(String content) {
+  final uri = Uri.tryParse(content.trim());
+  if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;
+  if (uri.scheme != 'http' && uri.scheme != 'https') return null;
+  return uri;
+}

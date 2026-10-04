@@ -20,12 +20,23 @@ class NoteCard extends StatelessWidget {
     this.onEdit,
   });
 
-  Future<void> _launchUrl() async {
-    final url = Uri.parse(note.content);
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      throw 'Не удалось открыть ссылку: $url';
+  Future<void> _launchUrl(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final url = linkUriFromContent(note.content);
+
+    var opened = false;
+    if (url != null) {
+      try {
+        opened = await launchUrl(url, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        opened = false;
+      }
+    }
+
+    if (!opened) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Не удалось открыть ссылку: ${note.content}')),
+      );
     }
   }
 
@@ -70,7 +81,7 @@ class NoteCard extends StatelessWidget {
                   Expanded(
                     child: isLink
                         ? GestureDetector(
-                      onTap: _launchUrl,
+                      onTap: () => _launchUrl(context),
                       child: Text(
                         linkTitle,
                         style: theme.textTheme.titleMedium?.copyWith(
@@ -153,7 +164,7 @@ class NoteCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: GestureDetector(
-                    onTap: _launchUrl,
+                    onTap: () => _launchUrl(context),
                     child: Text(
                       metadata['siteName'] ?? _extractDomain(note.content),
                       style: theme.textTheme.labelSmall?.copyWith(
