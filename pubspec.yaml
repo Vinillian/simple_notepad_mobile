@@ -1,5 +1,5 @@
 name: simple_notepad_mobile
-description: A new Flutter project.
+description: Offline-first notes app with Markdown and LaTeX, categories, JSON backups and optional server sync.
 publish_to: 'none'
 version: 0.1.0+1
 
