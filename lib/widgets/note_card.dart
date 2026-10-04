@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'markdown_with_latex.dart';
 import '../models/note.dart';
+import '../utils/note_helper.dart';
 
 class NoteCard extends StatelessWidget {
   final Note note;
@@ -35,6 +36,10 @@ class NoteCard extends StatelessWidget {
     final metadata = note.metadata ?? {};
     final imageUrl = metadata['image'] as String?;
     final faviconUrl = metadata['favicon'] as String?;
+    final linkTitle = isLink
+        ? linkCardTitle(
+            title: note.title, metadata: note.metadata, url: note.content)
+        : '';
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -67,7 +72,7 @@ class NoteCard extends StatelessWidget {
                         ? GestureDetector(
                       onTap: _launchUrl,
                       child: Text(
-                        note.title ?? 'Открыть ссылку',
+                        linkTitle,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,
@@ -120,7 +125,9 @@ class NoteCard extends StatelessWidget {
                       const Icon(Icons.broken_image, size: 50),
                     ),
                   ),
-                if (metadata['title'] != null && metadata['title'].isNotEmpty)
+                if (metadata['title'] is String &&
+                    (metadata['title'] as String).trim().isNotEmpty &&
+                    (metadata['title'] as String).trim() != linkTitle)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
