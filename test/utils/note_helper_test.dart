@@ -3,7 +3,7 @@ import 'package:simple_notepad_mobile/models/note.dart';
 import 'package:simple_notepad_mobile/utils/note_helper.dart';
 
 Note existingLink({String content = 'https://example.com/a'}) => Note(
-      id: 111,
+      id: '111',
       title: 'My link',
       content: content,
       categoryId: 'general',
@@ -28,9 +28,10 @@ void main() {
         categoryId: 'general',
         type: 'note',
         now: now,
+        newId: 'new-id',
       );
 
-      expect(note.id, now.millisecondsSinceEpoch.toDouble());
+      expect(note.id, 'new-id');
       expect(note.title, isNull);
       expect(note.date, '04.10.2026, 14:05');
       expect(note.createdTimestamp, now.millisecondsSinceEpoch);
@@ -39,6 +40,18 @@ void main() {
       expect(note.editMode, 0);
       expect(note.metadata, isNull);
       expect(note.previewText, isNull);
+    });
+
+    test('generates an id for a new note when none is given', () {
+      final note = buildNoteForSave(
+        title: '',
+        content: 'hello',
+        categoryId: 'general',
+        type: 'note',
+        now: now,
+      );
+
+      expect(note.id, isNotEmpty);
     });
 
     test('keeps state and metadata when only the title changes', () {

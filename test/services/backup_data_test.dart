@@ -37,13 +37,30 @@ void main() {
       ]));
 
       final note = backup.notes.single;
-      expect(note.id, 1700000000000.0);
+      expect(note.id, '1700000000000');
       expect(note.title, 'Old note');
       expect(note.categoryId, 'ideas');
       expect(note.createdTimestamp, 1700000000000);
       expect(note.updatedTimestamp, 1700000001000);
       expect(note.expanded, 1);
       expect(note.editMode, 0);
+    });
+
+    test('keeps a fractional numeric id exactly, as text', () {
+      final backup = parse(backupWith(notes: [
+        {'id': 1700000000000.5, 'content': 'x'},
+        {'id': 1700000000000.0, 'content': 'y'},
+      ]));
+
+      expect(backup.notes.map((n) => n.id), ['1700000000000.5', '1700000000000']);
+    });
+
+    test('keeps a string id as it is', () {
+      final backup = parse(backupWith(notes: [
+        {'id': '3f2b8c1e-9a47-4d6b-8e21-5c0a7d4f9b12', 'content': 'x'},
+      ]));
+
+      expect(backup.notes.single.id, '3f2b8c1e-9a47-4d6b-8e21-5c0a7d4f9b12');
     });
 
     test('keeps snake_case keys as they are', () {
@@ -79,19 +96,19 @@ void main() {
       expect(note.type, 'note');
       expect(note.expanded, 0);
       expect(note.editMode, 0);
-      expect(note.id, greaterThan(0));
+      expect(note.id, isNotEmpty);
       expect(note.date, isNotEmpty);
     });
 
     test('skips malformed entries and keeps the valid ones', () {
       final backup = parse(backupWith(notes: [
-        {'id': 'abc', 'content': 'bad id'},
+        {'id': true, 'content': 'bad id'},
         {'id': 2, 'content': 'good'},
         'not a map',
       ]));
 
       expect(backup.notes, hasLength(1));
-      expect(backup.notes.single.id, 2.0);
+      expect(backup.notes.single.id, '2');
     });
 
     test('decodes metadata stored as a JSON string', () {
@@ -204,7 +221,7 @@ void main() {
       final original = BackupData(
         notes: [
           Note(
-            id: 1700000000000,
+            id: '1700000000000',
             title: 'Link',
             content: 'https://example.com',
             categoryId: 'ideas',

@@ -39,7 +39,7 @@ class NotesNotifier extends _$NotesNotifier {
     }
   }
 
-  Future<void> updateNote(double id, Note note) async {
+  Future<void> updateNote(String id, Note note) async {
     await _localService.updateNote(note);
     await refresh(category: category, sort: sort);
     ref.invalidate(categoryNotesCountProvider);
@@ -51,7 +51,7 @@ class NotesNotifier extends _$NotesNotifier {
     }
   }
 
-  Future<void> deleteNote(double id) async {
+  Future<void> deleteNote(String id) async {
     await _localService.deleteNote(id);
     await refresh(category: category, sort: sort);
     ref.invalidate(categoryNotesCountProvider);
@@ -110,7 +110,7 @@ class NotesNotifier extends _$NotesNotifier {
     }
   }
 
-  Future<void> _deleteNoteRemote(double id) async {
+  Future<void> _deleteNoteRemote(String id) async {
     try {
       await _remoteService.deleteNote(id);
     } catch (e) {
@@ -118,7 +118,7 @@ class NotesNotifier extends _$NotesNotifier {
     }
   }
 
-  Future<void> _fetchAndUpdateMetadata(double noteId, String url) async {
+  Future<void> _fetchAndUpdateMetadata(String noteId, String url) async {
     final metadata = await LinkMetadataService.fetchMetadata(url);
     if (metadata.isNotEmpty) {
       final note = await _localService.getNoteById(noteId);

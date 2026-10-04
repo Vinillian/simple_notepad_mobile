@@ -7,6 +7,7 @@ import '../models/note.dart';
 import '../models/category.dart';
 import '../models/settings.dart';
 import '../utils/helpers.dart';
+import '../utils/note_id.dart';
 
 class BackupData {
   final List<Note> notes;
@@ -57,10 +58,9 @@ class BackupData {
           foundation.debugPrint('  Content length: ${map['content']?.length ?? 0}');
         }
 
-        // id -> double
-        map['id'] = map['id'] != null
-            ? (map['id'] as num).toDouble()
-            : DateTime.now().millisecondsSinceEpoch.toDouble();
+        // id -> string (a numeric id keeps its exact value as text)
+        map['id'] =
+            map['id'] != null ? noteIdFromValue(map['id']) : generateNoteId();
 
         // created_timestamp
         if (map.containsKey('createdTimestamp')) {

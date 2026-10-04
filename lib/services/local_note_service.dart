@@ -24,7 +24,7 @@ class LocalNoteService {
     return List.generate(maps.length, (i) => Note.fromJson(maps[i]));
   }
 
-  Future<Note?> getNoteById(double id) async {
+  Future<Note?> getNoteById(String id) async {
     final db = await _dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'notes',
@@ -56,7 +56,7 @@ class LocalNoteService {
     );
   }
 
-  Future<void> deleteNote(double id) async {
+  Future<void> deleteNote(String id) async {
     final db = await _dbHelper.database;
     await db.delete(
       'notes',
