@@ -160,4 +160,25 @@ void main() {
       expect(linkCardTitle(url: ''), 'Открыть ссылку');
     });
   });
+
+  group('linkUriFromContent', () {
+    test('parses an http or https URL', () {
+      expect(linkUriFromContent('https://example.com/page')?.host,
+          'example.com');
+      expect(linkUriFromContent('http://example.com')?.scheme, 'http');
+    });
+
+    test('ignores surrounding whitespace and a trailing newline', () {
+      expect(linkUriFromContent('  https://example.com/a\n'),
+          Uri.parse('https://example.com/a'));
+    });
+
+    test('returns null when the content is not an http(s) URL', () {
+      expect(linkUriFromContent(''), isNull);
+      expect(linkUriFromContent('example.com'), isNull);
+      expect(linkUriFromContent('https://'), isNull);
+      expect(linkUriFromContent('ftp://example.com'), isNull);
+      expect(linkUriFromContent('mailto:a@example.com'), isNull);
+    });
+  });
 }
