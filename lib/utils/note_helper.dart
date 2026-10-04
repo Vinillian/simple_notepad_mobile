@@ -1,5 +1,6 @@
 import '../models/note.dart';
 import 'helpers.dart';
+import 'note_id.dart';
 
 /// Builds the note to save from the edit form.
 ///
@@ -8,6 +9,8 @@ import 'helpers.dart';
 /// Metadata and preview text describe the content, so they are dropped only
 /// when the content really changed; a null metadata makes the notes provider
 /// fetch it again for the new link.
+///
+/// A new note gets [newId], or a generated UUID when it is not given.
 Note buildNoteForSave({
   Note? original,
   required String title,
@@ -15,13 +18,14 @@ Note buildNoteForSave({
   required String categoryId,
   required String type,
   required DateTime now,
+  String? newId,
 }) {
   final timestamp = now.millisecondsSinceEpoch;
   final contentChanged =
       original == null || original.content.trim() != content.trim();
 
   return Note(
-    id: original?.id ?? timestamp.toDouble(),
+    id: original?.id ?? newId ?? generateNoteId(),
     title: title.isEmpty ? null : title,
     content: content,
     categoryId: categoryId,
@@ -53,4 +57,14 @@ String linkCardTitle({
   if (domain != null && domain.isNotEmpty) return domain;
 
   return 'Открыть ссылку';
+}
+
+/// The URL to open for a link note, or null when the content is not a usable
+/// http(s) URL. Surrounding whitespace, such as a trailing newline typed in the
+/// editor, is ignored.
+Uri? linkUriFromContent(String content) {
+  final uri = Uri.tryParse(content.trim());
+  if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;
+  if (uri.scheme != 'http' && uri.scheme != 'https') return null;
+  return uri;
 }

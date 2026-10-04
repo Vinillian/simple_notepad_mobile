@@ -7,7 +7,7 @@ import 'package:simple_notepad_mobile/utils/merge_helper.dart';
 Category category(String id) =>
     Category(id: id, name: 'Category $id', color: '#4CAF50', custom: 1);
 
-Note note(double id, {String content = 'text'}) => Note(
+Note note(String id, {String content = 'text'}) => Note(
       id: id,
       title: 'Note $id',
       content: content,
@@ -50,16 +50,16 @@ void main() {
   group('MergeHelper.findNewNotes', () {
     test('returns only notes whose id is not in current', () {
       final result = MergeHelper.findNewNotes(
-        current: [note(1), note(2)],
-        imported: [note(2), note(3)],
+        current: [note('1'), note('2')],
+        imported: [note('2'), note('3')],
       );
-      expect(result.map((n) => n.id), [3.0]);
+      expect(result.map((n) => n.id), ['3']);
     });
 
     test('returns an empty list when nothing is new', () {
       final result = MergeHelper.findNewNotes(
-        current: [note(1)],
-        imported: [note(1)],
+        current: [note('1')],
+        imported: [note('1')],
       );
       expect(result, isEmpty);
     });
@@ -67,8 +67,8 @@ void main() {
     test('ignores edits to notes with the same id (known limitation)', () {
       // Edits are not propagated yet; this documents the current behavior.
       final result = MergeHelper.findNewNotes(
-        current: [note(1, content: 'old')],
-        imported: [note(1, content: 'changed')],
+        current: [note('1', content: 'old')],
+        imported: [note('1', content: 'changed')],
       );
       expect(result, isEmpty);
     });

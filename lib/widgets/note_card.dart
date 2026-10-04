@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'markdown_with_latex.dart';
 import '../models/note.dart';
+import '../utils/link_launcher.dart';
 import '../utils/note_helper.dart';
 
 class NoteCard extends StatelessWidget {
@@ -20,14 +20,8 @@ class NoteCard extends StatelessWidget {
     this.onEdit,
   });
 
-  Future<void> _launchUrl() async {
-    final url = Uri.parse(note.content);
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      throw 'Не удалось открыть ссылку: $url';
-    }
-  }
+  Future<void> _launchUrl(BuildContext context) =>
+      openExternalLink(context, note.content);
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +64,7 @@ class NoteCard extends StatelessWidget {
                   Expanded(
                     child: isLink
                         ? GestureDetector(
-                      onTap: _launchUrl,
+                      onTap: () => _launchUrl(context),
                       child: Text(
                         linkTitle,
                         style: theme.textTheme.titleMedium?.copyWith(
@@ -153,7 +147,7 @@ class NoteCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: GestureDetector(
-                    onTap: _launchUrl,
+                    onTap: () => _launchUrl(context),
                     child: Text(
                       metadata['siteName'] ?? _extractDomain(note.content),
                       style: theme.textTheme.labelSmall?.copyWith(

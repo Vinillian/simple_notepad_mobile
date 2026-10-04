@@ -3,7 +3,7 @@ import 'package:simple_notepad_mobile/models/note.dart';
 import 'package:simple_notepad_mobile/utils/note_helper.dart';
 
 Note existingLink({String content = 'https://example.com/a'}) => Note(
-      id: 111,
+      id: '111',
       title: 'My link',
       content: content,
       categoryId: 'general',
@@ -28,9 +28,10 @@ void main() {
         categoryId: 'general',
         type: 'note',
         now: now,
+        newId: 'new-id',
       );
 
-      expect(note.id, now.millisecondsSinceEpoch.toDouble());
+      expect(note.id, 'new-id');
       expect(note.title, isNull);
       expect(note.date, '04.10.2026, 14:05');
       expect(note.createdTimestamp, now.millisecondsSinceEpoch);
@@ -39,6 +40,18 @@ void main() {
       expect(note.editMode, 0);
       expect(note.metadata, isNull);
       expect(note.previewText, isNull);
+    });
+
+    test('generates an id for a new note when none is given', () {
+      final note = buildNoteForSave(
+        title: '',
+        content: 'hello',
+        categoryId: 'general',
+        type: 'note',
+        now: now,
+      );
+
+      expect(note.id, isNotEmpty);
     });
 
     test('keeps state and metadata when only the title changes', () {
@@ -145,6 +158,27 @@ void main() {
 
     test('uses a generic label when nothing else is available', () {
       expect(linkCardTitle(url: ''), 'Открыть ссылку');
+    });
+  });
+
+  group('linkUriFromContent', () {
+    test('parses an http or https URL', () {
+      expect(linkUriFromContent('https://example.com/page')?.host,
+          'example.com');
+      expect(linkUriFromContent('http://example.com')?.scheme, 'http');
+    });
+
+    test('ignores surrounding whitespace and a trailing newline', () {
+      expect(linkUriFromContent('  https://example.com/a\n'),
+          Uri.parse('https://example.com/a'));
+    });
+
+    test('returns null when the content is not an http(s) URL', () {
+      expect(linkUriFromContent(''), isNull);
+      expect(linkUriFromContent('example.com'), isNull);
+      expect(linkUriFromContent('https://'), isNull);
+      expect(linkUriFromContent('ftp://example.com'), isNull);
+      expect(linkUriFromContent('mailto:a@example.com'), isNull);
     });
   });
 }

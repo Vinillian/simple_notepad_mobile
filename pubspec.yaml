@@ -1,7 +1,7 @@
 name: simple_notepad_mobile
 description: Offline-first notes app with Markdown and LaTeX, categories, JSON backups and optional server sync.
 publish_to: 'none'
-version: 0.2.0+1
+version: 0.3.0+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

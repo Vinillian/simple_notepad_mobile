@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
+import '../utils/note_id.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -19,12 +20,29 @@ class DatabaseHelper {
     return _database!;
   }
 
+  static const String _createNotesTableSql = '''
+    CREATE TABLE notes(
+      id TEXT PRIMARY KEY,
+      title TEXT,
+      content TEXT NOT NULL,
+      category_id TEXT NOT NULL,
+      date TEXT NOT NULL,
+      created_timestamp INTEGER NOT NULL,
+      updated_timestamp INTEGER NOT NULL,
+      expanded INTEGER NOT NULL,
+      edit_mode INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      metadata TEXT,
+      preview_text TEXT
+    )
+  ''';
+
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
     String path = join(documentsDirectory.path, 'notepad.db');
     return await openDatabase(
       path,
-      version: 3, // v3: добавлена таблица app_meta
+      version: 4, // v4: note ids are TEXT (v3: добавлена таблица app_meta)
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -40,22 +58,7 @@ class DatabaseHelper {
       )
     ''');
 
-    await db.execute('''
-      CREATE TABLE notes(
-        id REAL PRIMARY KEY,
-        title TEXT,
-        content TEXT NOT NULL,
-        category_id TEXT NOT NULL,
-        date TEXT NOT NULL,
-        created_timestamp INTEGER NOT NULL,
-        updated_timestamp INTEGER NOT NULL,
-        expanded INTEGER NOT NULL,
-        edit_mode INTEGER NOT NULL,
-        type TEXT NOT NULL,
-        metadata TEXT,
-        preview_text TEXT
-      )
-    ''');
+    await db.execute(_createNotesTableSql);
 
     await db.execute('''
       CREATE TABLE settings(
@@ -96,6 +99,32 @@ class DatabaseHelper {
         );
       }
     }
+    if (oldVersion < 4) {
+      await _migrateNoteIdsToText(db);
+    }
+  }
+
+  /// v4: note ids became TEXT. SQLite cannot change a column type in place, so
+  /// the table is rebuilt. Numeric ids keep their exact value as text; a row
+  /// without a usable id gets a fresh UUID instead of failing the upgrade.
+  Future<void> _migrateNoteIdsToText(Database db) async {
+    await db.execute('ALTER TABLE notes RENAME TO notes_old');
+    await db.execute(_createNotesTableSql);
+
+    final rows = await db.query('notes_old');
+    final batch = db.batch();
+    for (final row in rows) {
+      final map = Map<String, Object?>.from(row);
+      try {
+        map['id'] = noteIdFromValue(row['id']);
+      } catch (_) {
+        map['id'] = generateNoteId();
+      }
+      batch.insert('notes', map, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    await batch.commit(noResult: true);
+
+    await db.execute('DROP TABLE notes_old');
   }
 
   Future<void> close() async {

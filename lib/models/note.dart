@@ -1,7 +1,8 @@
 import 'dart:convert';
+import '../utils/note_id.dart';
 
 class Note {
-  final double id;
+  final String id;
   final String? title;
   final String content;
   final String categoryId;
@@ -45,7 +46,7 @@ class Note {
     }
 
     return Note(
-      id: (json['id'] as num).toDouble(),
+      id: noteIdFromValue(json['id']),
       title: json['title'] as String?,
       content: json['content'] as String,
       categoryId: json['category_id'] as String,
