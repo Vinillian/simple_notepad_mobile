@@ -91,12 +91,12 @@ class NotesNotifier extends _$NotesNotifier {
         category: currentCategory, sort: currentSort));
   }
 
+  /// Sends a new note to the server in a single request, without downloading
+  /// the whole list first. A failure, including an id the server already has,
+  /// is only logged: the note is safe locally.
   Future<void> _syncNoteToRemote(Note note) async {
     try {
-      final remoteNotes = await _remoteService.getNotes();
-      if (!remoteNotes.any((n) => n.id == note.id)) {
-        await _remoteService.createNote(note);
-      }
+      await _remoteService.createNote(note);
     } catch (e) {
       foundation.debugPrint('_syncNoteToRemote error: $e');
     }

@@ -84,12 +84,11 @@ class CategoriesNotifier extends _$CategoriesNotifier {
     state = AsyncValue.data(await _localService.getCategories());
   }
 
+  /// Sends a new category to the server in a single request, without
+  /// downloading the whole list first. A failure is only logged.
   Future<void> _syncCategoryToRemote(Category category) async {
     try {
-      final remoteCategories = await _remoteService.getCategories();
-      if (!remoteCategories.any((c) => c.id == category.id)) {
-        await _remoteService.createCategory(category);
-      }
+      await _remoteService.createCategory(category);
     } catch (e) {
       foundation.debugPrint('_syncCategoryToRemote error: $e');
     }
