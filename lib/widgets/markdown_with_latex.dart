@@ -3,6 +3,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
 import 'package:markdown/markdown.dart' as md;
 import '../utils/latex_preprocessor.dart';
+import '../utils/link_launcher.dart';
 
 class MarkdownWithLatex extends StatelessWidget {
   final String data;
@@ -24,6 +25,7 @@ class MarkdownWithLatex extends StatelessWidget {
       data: processed,
       styleSheet: styleSheet,
       softLineBreak: softLineBreak,
+      onTapLink: (text, href, title) => openExternalLink(context, href),
       builders: {
         'latex': LatexElementBuilder(),
       },
