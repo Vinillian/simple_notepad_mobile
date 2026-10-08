@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'markdown_with_latex.dart';
 import '../models/note.dart';
@@ -28,8 +27,6 @@ class NoteCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isLink = note.type == 'link';
     final metadata = note.metadata ?? {};
-    final imageUrl = metadata['image'] as String?;
-    final faviconUrl = metadata['favicon'] as String?;
     final linkTitle = isLink
         ? linkCardTitle(
             title: note.title, metadata: note.metadata, url: note.content)
@@ -48,17 +45,8 @@ class NoteCard extends StatelessWidget {
               Row(
                 children: [
                   if (isLink) ...[
-                    if (faviconUrl != null && faviconUrl.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: faviconUrl,
-                        width: 18,
-                        height: 18,
-                        errorWidget: (context, url, error) => Icon(Icons.link,
-                            size: 18, color: theme.colorScheme.primary),
-                      )
-                    else
-                      Icon(Icons.link,
-                          size: 18, color: theme.colorScheme.primary),
+                    Icon(Icons.link,
+                        size: 18, color: theme.colorScheme.primary),
                     const SizedBox(width: 4),
                   ],
                   Expanded(
@@ -105,20 +93,6 @@ class NoteCard extends StatelessWidget {
               const SizedBox(height: 8),
 
               if (isLink) ...[
-                if (imageUrl != null && imageUrl.isNotEmpty)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      height: 120,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) =>
-                      const Center(child: CircularProgressIndicator()),
-                      errorWidget: (context, url, error) =>
-                      const Icon(Icons.broken_image, size: 50),
-                    ),
-                  ),
                 if (metadata['title'] is String &&
                     (metadata['title'] as String).trim().isNotEmpty &&
                     (metadata['title'] as String).trim() != linkTitle)
