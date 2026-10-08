@@ -5,10 +5,6 @@ import 'database_helper.dart';
 class LocalAppStateService {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
-  /// Key in `app_meta`: whether link previews may be fetched from a
-  /// third-party service. A missing value means enabled.
-  static const String linkPreviewsKey = 'link_previews_enabled';
-
   Future<String?> _getValue(String key) async {
     final db = await _dbHelper.database;
     final rows = await db.query(
@@ -36,17 +32,5 @@ class LocalAppStateService {
 
   Future<void> markSetupComplete() {
     return _setValue(DatabaseHelper.setupCompleteKey, '1');
-  }
-
-  /// Previews are on unless the user turned them off.
-  static bool previewFlagFromValue(String? value) => value != '0';
-
-  /// Whether link previews may be fetched through api.microlink.io.
-  Future<bool> isLinkPreviewEnabled() async {
-    return previewFlagFromValue(await _getValue(linkPreviewsKey));
-  }
-
-  Future<void> setLinkPreviewEnabled(bool enabled) {
-    return _setValue(linkPreviewsKey, enabled ? '1' : '0');
   }
 }
