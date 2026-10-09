@@ -1,79 +1,85 @@
 # simple_notepad_mobile
 
-Приложение для заметок с поддержкой Markdown и LaTeX, категорий, синхронизации с сервером и резервного копирования.
+A notes app for Android with Markdown and LaTeX support, categories, JSON backups and optional sync with your own server.
 
-## Возможности
+## Features
 
-- Создание, редактирование и удаление заметок
-- **Поддержка Markdown и LaTeX** при отображении и предпросмотр в редакторе
-- Автоматическое определение ссылок и отображение превью с метаданными
-- Категории с настраиваемыми цветами
-- Локальное хранение (SQLite), приложение работает без сети
-- Синхронизация с REST API (опционально)
-- Экспорт и импорт данных в формате JSON
+- Create, edit and delete notes
+- **Markdown and LaTeX** rendering, with a preview in the editor
+- Automatic link detection: a link card shows an icon, the title, the description and the site name, without any requests to third-party services
+- Categories with custom colors
+- Local storage (SQLite); the app works fully offline
+- Optional sync with a REST API (the server address is set in the app's settings)
+- Backup export and import as JSON; on export you choose the folder where the file is saved, or share it instead
 
-## Начало работы
+## Getting started
 
-1. Клонируйте репозиторий
-2. Выполните `flutter pub get`
-3. Запустите приложение на Android-эмуляторе или устройстве: `flutter run`
+1. Clone the repository.
+2. Run `flutter pub get`.
+3. Start the app on an Android emulator or device: `flutter run`.
 
-Локальная база использует `sqflite`, поэтому в Chrome и на Windows desktop приложение не работает (белый экран). Проверять нужно на Android.
+The local database uses `sqflite`, so the app does not work in Chrome or on Windows desktop (you get a blank screen). Run and test it on Android.
 
-Для настройки синхронизации укажите URL API через `--dart-define=API_URL=...`. По умолчанию используется `http://10.0.2.2:3000/api` (адрес хоста для Android-эмулятора). Готового сервера в репозитории нет, приложение полностью работает и без него.
+### Server address
 
-Открытый `http://` разрешён только для `10.0.2.2`, `localhost` и `127.0.0.1` (разработка на эмуляторе), для любого другого адреса нужен `https://`. Чтобы проверить сервер в локальной сети по `http://`, добавьте его адрес в `android/app/src/main/res/xml/network_security_config.xml` и пересоберите приложение. Картинки превью с сайтов, которые отдаются только по `http://`, не загружаются, вместо них показывается значок.
+Sync is optional and the app works fully without a server. To use one, open **Settings** (the gear icon on the main screen) and enter the **server address**, for example `https://notes.example.com/api`. The address is stored on the device only. Leave the field empty to use the default. A change applies to the next request, no restart needed.
+
+The default address is `http://10.0.2.2:3000/api` (the host machine as seen from the Android emulator). You can change it at build time with `--dart-define`:
 
 ```
 flutter run --dart-define=API_URL=https://notes.example.com/api
 flutter build apk --release --dart-define=API_URL=https://notes.example.com/api
 ```
 
-## Разработка
+Plain `http://` is allowed only for `10.0.2.2`, `localhost` and `127.0.0.1` (development on the emulator); any other address needs `https://`. The Settings screen warns you if an `http://` address is blocked by Android. To test a server in your local network over `http://`, add its address to `android/app/src/main/res/xml/network_security_config.xml` and rebuild the app. There is no ready-made server in this repository.
 
-### Генерация кода
+## Development
 
-Провайдеры (Riverpod) и JSON-модели используют кодогенерацию. Сгенерированные файлы `*.g.dart` лежат в репозитории; после изменения аннотированных классов их нужно пересобрать:
+### Code generation
+
+Providers (Riverpod) and JSON models use code generation. The generated `*.g.dart` files are committed to the repository; after changing an annotated class, regenerate them:
 
 ```
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-### Проверки
+### Checks
 
 ```
 flutter analyze
 flutter test
 ```
 
-Те же команды выполняет CI (GitHub Actions) на каждый push и pull request в `main` и `develop`.
+CI (GitHub Actions) runs the same commands on every push and pull request to `main` and `develop`. CI fails on `flutter analyze` infos as well as warnings.
 
-## Контракт сервера
+The detailed log of backup parsing is off by default. To turn it on, add `--dart-define=BACKUP_VERBOSE=true` to the `flutter run` command.
 
-Это интерфейс, который ожидает клиент. Базовый адрес задаётся `API_URL`. Все запросы и ответы в формате JSON (`Content-Type: application/json`), успешным считается любой код 2xx. Таймаут запроса 10 секунд, любая ошибка или таймаут просто пропускают синхронизацию, локальные данные не меняются.
+## Server contract
 
-| Метод и путь | Назначение |
+This is the interface the client expects. The base address is the server address from Settings (or `API_URL`). All requests and responses use JSON (`Content-Type: application/json`), and any 2xx status counts as success. The request timeout is 10 seconds. Any error or timeout simply skips the sync, and local data is left unchanged.
+
+| Method and path | Purpose |
 |---|---|
-| `GET /notes?sort=new` | Список заметок. Параметры: `sort` (`new` по умолчанию или `old`), необязательный `category` (id категории) |
-| `GET /notes/{id}` | Одна заметка |
-| `POST /notes` | Создать заметку (тело: объект заметки) |
-| `PUT /notes/{id}` | Обновить заметку (тело: объект заметки) |
-| `DELETE /notes/{id}` | Удалить заметку (ответ 200 или 204) |
-| `GET /categories` | Список категорий |
-| `POST /categories` | Создать категорию (тело: объект категории) |
-| `DELETE /categories/{id}` | Удалить категорию (ответ 200 или 204) |
-| `GET /settings` | Настройки |
-| `PUT /settings` | Сохранить настройки |
+| `GET /notes?sort=new` | List notes. Parameters: `sort` (`new` by default, or `old`) and an optional `category` (category id) |
+| `GET /notes/{id}` | One note |
+| `POST /notes` | Create a note (body: a note object) |
+| `PUT /notes/{id}` | Update a note (body: a note object) |
+| `DELETE /notes/{id}` | Delete a note (response 200 or 204) |
+| `GET /categories` | List categories |
+| `POST /categories` | Create a category (body: a category object) |
+| `DELETE /categories/{id}` | Delete a category (response 200 or 204) |
+| `GET /settings` | Get settings |
+| `PUT /settings` | Save settings |
 
-Тела ответов на `POST` и `PUT` клиент не использует, они могут быть пустыми.
+The client does not use the response bodies of `POST` and `PUT`, so they may be empty.
 
-**Заметка:**
+**Note:**
 
 ```json
 {
   "id": "3f2b8c1e-9a47-4d6b-8e21-5c0a7d4f9b12",
-  "title": "Заголовок или null",
-  "content": "Текст в Markdown или URL",
+  "title": "A title or null",
+  "content": "Markdown text or a URL",
   "category_id": "general",
   "date": "04.10.2026, 14:05",
   "created_timestamp": 1759500000000,
@@ -86,41 +92,44 @@ flutter test
 }
 ```
 
-- `id` строка: UUID для новых заметок. У заметок, созданных раньше или импортированных из веб-версии, это число (время создания в миллисекундах, иногда с дробной частью), записанное строкой. Клиент принимает и число, и строку. `type` равен `note` или `link`.
-- `expanded` и `edit_mode` принимают 0 или 1.
-- `metadata` для ссылок это JSON, закодированный строкой (`title`, `description`, `image`, `favicon`, `siteName`) или `null`. Клиент принимает и строку, и объект.
+- `id` is a string: a UUID for new notes. For notes created earlier or imported from the web version it is a number (the creation time in milliseconds, sometimes with a fractional part) stored as a string. The client accepts both a number and a string. `type` is `note` or `link`.
+- `expanded` and `edit_mode` are 0 or 1.
+- For links, `metadata` is JSON encoded as a string (`title`, `description`, `image`, `favicon`, `siteName`) or `null`. The client accepts both a string and an object.
 
-**Категория:** `{"id": "general", "name": "Общее", "color": "#4CAF50", "custom": 0}`. `custom: 0` означает системную категорию, её нельзя удалить из списка.
+**Category:** `{"id": "general", "name": "General", "color": "#4CAF50", "custom": 0}`. `custom: 0` marks a system category, which cannot be removed from the list.
 
-**Настройки:** `{"sort_order": "new", "view_mode": "list"}`.
+**Settings:** `{"sort_order": "new", "view_mode": "list"}`.
 
-Сейчас синхронизация только добавляет недостающие заметки и категории в обе стороны. Удаления и изменения между устройствами не переносятся, это запланировано в milestone «Reliable sync».
+For now, sync only adds missing notes and categories in both directions. Edits and deletions are not carried between devices; this is planned in the "Reliable sync" milestone.
 
-## Формат резервной копии
+## Backup format
 
-Экспорт и импорт (экран резервных копий) используют один JSON-файл:
+Export and import (the backup screen) use a single JSON file. On export you can pick the folder (and change the file name) in the system "save as" dialog, or share the file instead.
 
 ```json
 {
-  "notes": [ /* объекты заметок в том же виде, что и для сервера */ ],
-  "categories": [ /* объекты категорий */ ],
+  "notes": [ /* note objects, in the same form as for the server */ ],
+  "categories": [ /* category objects */ ],
   "settings": { "sort_order": "new", "view_mode": "list" },
   "exportDate": "2026-10-04T14:05:00.000",
   "version": "1.0"
 }
 ```
 
-При импорте допускаются старые и веб-варианты ключей: `createdTimestamp`, `updatedTimestamp`, `editMode`, `category` вместо `category_id`, `sortOrder` и `viewMode` в настройках, булевы значения вместо 0 и 1, а также числовой `id` (он сохраняется как строка без потери значения). Недостающие поля получают значения по умолчанию, некорректные записи пропускаются. Импорт добавляет только отсутствующие заметки и категории и не перезаписывает существующие.
+On import, older and web-version keys are accepted: `createdTimestamp`, `updatedTimestamp`, `editMode`, `category` instead of `category_id`, `sortOrder` and `viewMode` in settings, booleans instead of 0 and 1, and a numeric `id` (it is kept as a string without losing the value). Missing fields get default values, and malformed entries are skipped. Import only adds notes and categories that are missing and never overwrites existing ones.
 
-## Используемые технологии
+## Privacy
+
+The app does not contact third-party services: links are not sent to external servers, and site images and icons are not downloaded. Notes are stored only on the device. The only network traffic, if you set it up, is sync with your own server. If old data already contains a saved page title and description, they are shown from the local database.
+
+## Built with
 
 - Flutter
-- Riverpod (состояние, кодогенерация)
+- Riverpod (state management, code generation)
 - SQLite (sqflite)
 - HTTP (http)
-- Markdown и LaTeX (flutter_markdown)
-- Cached Network Image
+- Markdown and LaTeX (flutter_markdown)
 
-## Лицензия
+## License
 
 MIT

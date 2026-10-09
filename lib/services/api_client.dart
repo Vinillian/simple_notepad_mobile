@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../utils/constants.dart';
+import 'local_app_state_service.dart';
 
 class ApiClient {
   /// Maximum time to wait for the server; without it the OS-level connect
@@ -8,10 +9,26 @@ class ApiClient {
   static const Duration _timeout = Duration(seconds: 10);
 
   final http.Client _client = http.Client();
+  final ServerUrlStorage _storage;
+
+  ApiClient({ServerUrlStorage? storage})
+      : _storage = storage ?? LocalAppStateService();
+
+  /// Server address saved in the settings, or the build-time default.
+  /// Read on every request, so a change applies without restarting the app.
+  Future<Uri> _uri(String endpoint) async {
+    String? saved;
+    try {
+      saved = await _storage.getServerUrl();
+    } catch (_) {
+      saved = null;
+    }
+    return Uri.parse('${saved ?? ApiConstants.baseUrl}$endpoint');
+  }
 
   Future<dynamic> get(String endpoint) async {
-    final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     try {
+      final url = await _uri(endpoint);
       final response = await _client.get(url).timeout(_timeout);
       return _handleResponse(response);
     } catch (e) {
@@ -20,8 +37,8 @@ class ApiClient {
   }
 
   Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
-    final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     try {
+      final url = await _uri(endpoint);
       final response = await _client
           .post(
             url,
@@ -36,8 +53,8 @@ class ApiClient {
   }
 
   Future<dynamic> put(String endpoint, Map<String, dynamic> data) async {
-    final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     try {
+      final url = await _uri(endpoint);
       final response = await _client
           .put(
             url,
@@ -52,8 +69,8 @@ class ApiClient {
   }
 
   Future<void> delete(String endpoint) async {
-    final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     try {
+      final url = await _uri(endpoint);
       final response = await _client.delete(url).timeout(_timeout);
       if (response.statusCode != 204 && response.statusCode != 200) {
         throw Exception('Server error: ${response.statusCode}');

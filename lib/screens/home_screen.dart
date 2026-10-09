@@ -8,6 +8,7 @@ import '../widgets/loading_indicator.dart';
 import 'note_edit_screen.dart';
 import 'categories_screen.dart';
 import 'backup_screen.dart';
+import 'settings_screen.dart';
 import 'initial_setup_screen.dart';
 import '../services/local_app_state_service.dart';
 import '../utils/helpers.dart';
@@ -93,6 +94,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
             },
             tooltip: 'Резервное копирование',
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+            tooltip: 'Настройки',
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.sort),

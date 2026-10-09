@@ -3,7 +3,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../models/note.dart';
 import '../services/local_note_service.dart';
 import '../services/note_service.dart';
-import '../services/link_metadata_service.dart';
 import '../utils/merge_helper.dart';
 import 'categories_provider.dart';
 
@@ -33,10 +32,6 @@ class NotesNotifier extends _$NotesNotifier {
     await refresh(category: category, sort: sort);
     ref.invalidate(categoryNotesCountProvider);
     _syncNoteToRemote(note);
-
-    if (note.type == 'link') {
-      _fetchAndUpdateMetadata(note.id, note.content);
-    }
   }
 
   Future<void> updateNote(String id, Note note) async {
@@ -44,11 +39,6 @@ class NotesNotifier extends _$NotesNotifier {
     await refresh(category: category, sort: sort);
     ref.invalidate(categoryNotesCountProvider);
     _updateNoteRemote(note);
-
-    if (note.type == 'link' &&
-        (note.metadata == null || note.metadata!.isEmpty)) {
-      _fetchAndUpdateMetadata(note.id, note.content);
-    }
   }
 
   Future<void> deleteNote(String id) async {
@@ -115,33 +105,6 @@ class NotesNotifier extends _$NotesNotifier {
       await _remoteService.deleteNote(id);
     } catch (e) {
       foundation.debugPrint('_deleteNoteRemote error: $e');
-    }
-  }
-
-  Future<void> _fetchAndUpdateMetadata(String noteId, String url) async {
-    final metadata = await LinkMetadataService.fetchMetadata(url);
-    if (metadata.isNotEmpty) {
-      final note = await _localService.getNoteById(noteId);
-      if (note != null) {
-        final updatedNote = Note(
-          id: note.id,
-          title: note.title,
-          content: note.content,
-          categoryId: note.categoryId,
-          date: note.date,
-          createdTimestamp: note.createdTimestamp,
-          updatedTimestamp: note.updatedTimestamp,
-          expanded: note.expanded,
-          editMode: note.editMode,
-          type: note.type,
-          metadata: metadata,
-          previewText: note.previewText,
-        );
-        await _localService.updateNote(updatedNote);
-        await refresh(category: category, sort: sort);
-        ref.invalidate(categoryNotesCountProvider);
-        _updateNoteRemote(updatedNote);
-      }
     }
   }
 }
