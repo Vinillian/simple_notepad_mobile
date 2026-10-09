@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' as foundation;
 import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
@@ -229,26 +230,65 @@ class BackupData {
 }
 
 class BackupService {
-  static Future<String> exportBackup({
+  /// File name for a new backup, e.g. `notebook_backup_2026-10-09T19-05-03.json`.
+  static String backupFileName([DateTime? now]) {
+    final stamp = (now ?? DateTime.now())
+        .toIso8601String()
+        .split('.')
+        .first
+        .replaceAll(':', '-');
+    return 'notebook_backup_$stamp.json';
+  }
+
+  /// The backup contents as a JSON string.
+  static String encodeBackup({
     required List<Note> notes,
     required List<Category> categories,
     required Settings settings,
-  }) async {
+  }) {
     final backup = BackupData(
       notes: notes,
       categories: categories,
       settings: settings,
     );
+    return jsonEncode(backup.toJson());
+  }
 
-    final jsonString = jsonEncode(backup.toJson());
-
+  /// Writes a backup to the temporary directory and returns its path.
+  /// Used for sharing; the file is not meant to be kept there.
+  static Future<String> exportBackup({
+    required List<Note> notes,
+    required List<Category> categories,
+    required Settings settings,
+  }) async {
     final directory = await getTemporaryDirectory();
-    final fileName =
-        'notebook_backup_${DateTime.now().toIso8601String().replaceAll(':', '-')}.json';
-    final file = File('${directory.path}/$fileName');
-
-    await file.writeAsString(jsonString, encoding: utf8);
+    final file = File('${directory.path}/${backupFileName()}');
+    await file.writeAsString(
+      encodeBackup(notes: notes, categories: categories, settings: settings),
+      encoding: utf8,
+    );
     return file.path;
+  }
+
+  /// Opens the system "save as" dialog so the user picks the folder (and may
+  /// change the name). Returns the saved path, or `null` if cancelled.
+  static Future<String?> saveBackupToChosenLocation({
+    required List<Note> notes,
+    required List<Category> categories,
+    required Settings settings,
+  }) {
+    final bytes = Uint8List.fromList(
+      utf8.encode(
+        encodeBackup(notes: notes, categories: categories, settings: settings),
+      ),
+    );
+    return FilePicker.platform.saveFile(
+      dialogTitle: 'Сохранить резервную копию',
+      fileName: backupFileName(),
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+      bytes: bytes,
+    );
   }
 
   static Future<BackupData?> pickAndParseBackup() async {

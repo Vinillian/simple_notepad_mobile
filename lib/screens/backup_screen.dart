@@ -22,9 +22,18 @@ class BackupScreen extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton.icon(
-              onPressed: () => _exportData(context, ref),
+              onPressed: () => _saveToFolder(context, ref),
               icon: const Icon(Icons.upload),
-              label: const Text('Экспортировать данные'),
+              label: const Text('Сохранить копию в папку'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () => _shareData(context, ref),
+              icon: const Icon(Icons.share),
+              label: const Text('Поделиться копией'),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
               ),
@@ -44,32 +53,48 @@ class BackupScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _exportData(BuildContext context, WidgetRef ref) async {
+  Future<void> _saveToFolder(BuildContext context, WidgetRef ref) async {
     try {
-      final notesAsync = await ref
+      final notes = await ref
           .read(notesNotifierProvider(category: null, sort: 'new').future);
-      final categoriesAsync = await ref.read(categoriesNotifierProvider.future);
-      final settingsAsync = await ref.read(settingsNotifierProvider.future);
+      final categories = await ref.read(categoriesNotifierProvider.future);
+      final settings = await ref.read(settingsNotifierProvider.future);
 
-      final filePath = await BackupService.exportBackup(
-        notes: notesAsync,
-        categories: categoriesAsync,
-        settings: settingsAsync,
+      final savedPath = await BackupService.saveBackupToChosenLocation(
+        notes: notes,
+        categories: categories,
+        settings: settings,
       );
 
       if (!context.mounted) return;
+      if (savedPath == null) return; // the user cancelled the dialog
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Бэкап сохранён: $filePath'),
-          action: SnackBarAction(
-            label: 'Поделиться',
-            onPressed: () {
-              Share.shareXFiles([XFile(filePath)], text: 'Мои заметки');
-            },
-          ),
-        ),
+        SnackBar(content: Text('Резервная копия сохранена: $savedPath')),
       );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка экспорта: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _shareData(BuildContext context, WidgetRef ref) async {
+    try {
+      final notes = await ref
+          .read(notesNotifierProvider(category: null, sort: 'new').future);
+      final categories = await ref.read(categoriesNotifierProvider.future);
+      final settings = await ref.read(settingsNotifierProvider.future);
+
+      final filePath = await BackupService.exportBackup(
+        notes: notes,
+        categories: categories,
+        settings: settings,
+      );
+
+      await Share.shareXFiles([XFile(filePath)], text: 'Мои заметки');
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
