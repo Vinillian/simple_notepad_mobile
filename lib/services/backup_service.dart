@@ -9,6 +9,15 @@ import '../models/settings.dart';
 import '../utils/helpers.dart';
 import '../utils/note_id.dart';
 
+/// Detailed backup parsing log. Off by default so that `flutter test` and
+/// normal runs stay quiet; turn it on with
+/// `--dart-define=BACKUP_VERBOSE=true`.
+const bool _verboseBackupLog = bool.fromEnvironment('BACKUP_VERBOSE');
+
+void _log(String message) {
+  if (_verboseBackupLog) foundation.debugPrint(message);
+}
+
 class BackupData {
   final List<Note> notes;
   final List<Category> categories;
@@ -34,13 +43,13 @@ class BackupData {
 
   factory BackupData.fromJson(Map<String, dynamic> json) {
     if (foundation.kDebugMode) {
-      foundation.debugPrint('=== НАЧАЛО ПАРСИНГА JSON ===');
-      foundation.debugPrint('Ключи в корне JSON: ${json.keys.join(', ')}');
+      _log('=== НАЧАЛО ПАРСИНГА JSON ===');
+      _log('Ключи в корне JSON: ${json.keys.join(', ')}');
     }
 
     final notesJson = json['notes'] as List? ?? [];
     if (foundation.kDebugMode) {
-      foundation.debugPrint('Найдено заметок в JSON: ${notesJson.length}');
+      _log('Найдено заметок в JSON: ${notesJson.length}');
     }
 
     final notes = <Note>[];
@@ -51,11 +60,11 @@ class BackupData {
       try {
         final map = Map<String, dynamic>.from(notesJson[i] as Map);
         if (foundation.kDebugMode) {
-          foundation.debugPrint('\n--- Обработка заметки #$i ---');
-          foundation.debugPrint('  ID: ${map['id']}');
-          foundation.debugPrint('  Title: ${map['title']}');
-          foundation.debugPrint('  Category: ${map['category'] ?? map['category_id']}');
-          foundation.debugPrint('  Content length: ${map['content']?.length ?? 0}');
+          _log('\n--- Обработка заметки #$i ---');
+          _log('  ID: ${map['id']}');
+          _log('  Title: ${map['title']}');
+          _log('  Category: ${map['category'] ?? map['category_id']}');
+          _log('  Content length: ${map['content']?.length ?? 0}');
         }
 
         // id -> string (a numeric id keeps its exact value as text)
@@ -124,27 +133,27 @@ class BackupData {
 
         notes.add(Note.fromJson(map));
         successCount++;
-        if (foundation.kDebugMode) foundation.debugPrint('  ✓ УСПЕШНО');
+        if (foundation.kDebugMode) _log('  ✓ УСПЕШНО');
       } catch (e, stackTrace) {
         errorCount++;
         if (foundation.kDebugMode) {
-          foundation.debugPrint('  ✗ ОШИБКА: $e');
-          foundation.debugPrint('  StackTrace: $stackTrace');
+          _log('  ✗ ОШИБКА: $e');
+          _log('  StackTrace: $stackTrace');
         }
       }
     }
 
     if (foundation.kDebugMode) {
-      foundation.debugPrint('\n=== ИТОГ ПО ЗАМЕТКАМ ===');
-      foundation.debugPrint('Всего в JSON: ${notesJson.length}');
-      foundation.debugPrint('Успешно обработано: $successCount');
-      foundation.debugPrint('Ошибок: $errorCount');
+      _log('\n=== ИТОГ ПО ЗАМЕТКАМ ===');
+      _log('Всего в JSON: ${notesJson.length}');
+      _log('Успешно обработано: $successCount');
+      _log('Ошибок: $errorCount');
     }
 
     final categoriesJson = json['categories'] as List? ?? [];
     if (foundation.kDebugMode) {
-      foundation.debugPrint('\n=== КАТЕГОРИИ ===');
-      foundation.debugPrint('Найдено категорий в JSON: ${categoriesJson.length}');
+      _log('\n=== КАТЕГОРИИ ===');
+      _log('Найдено категорий в JSON: ${categoriesJson.length}');
     }
 
     final categories = <Category>[];
@@ -155,7 +164,7 @@ class BackupData {
       try {
         final map = Map<String, dynamic>.from(categoriesJson[i] as Map);
         if (foundation.kDebugMode) {
-          foundation.debugPrint('  Категория #$i: ${map['name']} (${map['id']})');
+          _log('  Категория #$i: ${map['name']} (${map['id']})');
         }
 
         if (map['id'] == null) {
@@ -176,20 +185,20 @@ class BackupData {
         catSuccess++;
       } catch (e) {
         catError++;
-        if (foundation.kDebugMode) foundation.debugPrint('  Ошибка категории #$i: $e');
+        if (foundation.kDebugMode) _log('  Ошибка категории #$i: $e');
       }
     }
 
     if (foundation.kDebugMode) {
-      foundation.debugPrint('Категорий успешно: $catSuccess, ошибок: $catError');
+      _log('Категорий успешно: $catSuccess, ошибок: $catError');
     }
 
     final settingsMap = json['settings'] as Map<String, dynamic>? ?? {};
     if (foundation.kDebugMode) {
-      foundation.debugPrint('\n=== НАСТРОЙКИ ===');
-      foundation.debugPrint(
+      _log('\n=== НАСТРОЙКИ ===');
+      _log(
           'sortOrder: ${settingsMap['sortOrder'] ?? settingsMap['sort_order']}');
-      foundation.debugPrint('viewMode: ${settingsMap['viewMode'] ?? settingsMap['view_mode']}');
+      _log('viewMode: ${settingsMap['viewMode'] ?? settingsMap['view_mode']}');
     }
 
     final sortOrder = settingsMap['sortOrder'] as String? ??
@@ -201,11 +210,11 @@ class BackupData {
     final settings = Settings(sortOrder: sortOrder, viewMode: viewMode);
 
     if (foundation.kDebugMode) {
-      foundation.debugPrint('\n=== ФИНАЛЬНЫЙ РЕЗУЛЬТАТ ===');
-      foundation.debugPrint('Заметок: ${notes.length}');
-      foundation.debugPrint('Категорий: ${categories.length}');
-      foundation.debugPrint('Настройки: sort=$sortOrder, view=$viewMode');
-      foundation.debugPrint('=== КОНЕЦ ПАРСИНГА ===\n');
+      _log('\n=== ФИНАЛЬНЫЙ РЕЗУЛЬТАТ ===');
+      _log('Заметок: ${notes.length}');
+      _log('Категорий: ${categories.length}');
+      _log('Настройки: sort=$sortOrder, view=$viewMode');
+      _log('=== КОНЕЦ ПАРСИНГА ===\n');
     }
 
     return BackupData(
@@ -251,27 +260,27 @@ class BackupService {
     if (result == null) return null;
 
     if (foundation.kDebugMode) {
-      foundation.debugPrint('\n=== ВЫБРАН ФАЙЛ ===');
-      foundation.debugPrint('Путь: ${result.files.single.path}');
-      foundation.debugPrint('Имя: ${result.files.single.name}');
-      foundation.debugPrint('Размер: ${result.files.single.size} байт');
+      _log('\n=== ВЫБРАН ФАЙЛ ===');
+      _log('Путь: ${result.files.single.path}');
+      _log('Имя: ${result.files.single.name}');
+      _log('Размер: ${result.files.single.size} байт');
     }
 
     final file = File(result.files.single.path!);
     final content = await file.readAsString(encoding: utf8);
     if (foundation.kDebugMode) {
-      foundation.debugPrint('Содержимое прочитано, длина: ${content.length} символов');
+      _log('Содержимое прочитано, длина: ${content.length} символов');
     }
 
     try {
       final jsonMap = jsonDecode(content) as Map<String, dynamic>;
-      if (foundation.kDebugMode) foundation.debugPrint('JSON успешно декодирован');
+      if (foundation.kDebugMode) _log('JSON успешно декодирован');
       return BackupData.fromJson(jsonMap);
     } catch (e, stackTrace) {
       if (foundation.kDebugMode) {
-        foundation.debugPrint('!!! ОШИБКА ДЕКОДИРОВАНИЯ JSON !!!');
-        foundation.debugPrint('Ошибка: $e');
-        foundation.debugPrint('StackTrace: $stackTrace');
+        _log('!!! ОШИБКА ДЕКОДИРОВАНИЯ JSON !!!');
+        _log('Ошибка: $e');
+        _log('StackTrace: $stackTrace');
       }
       rethrow;
     }
