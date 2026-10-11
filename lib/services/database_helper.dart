@@ -33,7 +33,8 @@ class DatabaseHelper {
       edit_mode INTEGER NOT NULL,
       type TEXT NOT NULL,
       metadata TEXT,
-      preview_text TEXT
+      preview_text TEXT,
+      deleted INTEGER NOT NULL DEFAULT 0
     )
   ''';
 
@@ -42,7 +43,10 @@ class DatabaseHelper {
     String path = join(documentsDirectory.path, 'notepad.db');
     return await openDatabase(
       path,
-      version: 4, // v4: note ids are TEXT (v3: добавлена таблица app_meta)
+      // v5: notes have a `deleted` flag (a deleted note stays as a tombstone
+      // so that the deletion can be synced); v4: note ids are TEXT;
+      // v3: добавлена таблица app_meta
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -101,6 +105,21 @@ class DatabaseHelper {
     }
     if (oldVersion < 4) {
       await _migrateNoteIdsToText(db);
+    }
+    if (oldVersion < 5) {
+      await _addDeletedColumn(db);
+    }
+  }
+
+  /// v5: adds the `deleted` flag. The v4 rebuild above already creates the
+  /// column (it uses the current table definition), so check before adding.
+  Future<void> _addDeletedColumn(Database db) async {
+    final columns = await db.rawQuery('PRAGMA table_info(notes)');
+    final hasDeleted = columns.any((c) => c['name'] == 'deleted');
+    if (!hasDeleted) {
+      await db.execute(
+        'ALTER TABLE notes ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0',
+      );
     }
   }
 
