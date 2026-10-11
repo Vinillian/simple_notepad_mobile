@@ -285,16 +285,19 @@ class BackupService {
     return FilePicker.platform.saveFile(
       dialogTitle: 'Сохранить резервную копию',
       fileName: backupFileName(),
-      type: FileType.custom,
-      allowedExtensions: ['json'],
+      // `FileType.custom` with an extension fails with "Unsupported filter"
+      // on older Android versions that have no MIME type for `json`.
+      type: FileType.any,
       bytes: bytes,
     );
   }
 
   static Future<BackupData?> pickAndParseBackup() async {
+    // `FileType.custom` with an extension fails with "Unsupported filter" on
+    // older Android versions (no MIME type for `json`), so any file can be
+    // picked and a wrong file is rejected when it is parsed below.
     FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['json'],
+      type: FileType.any,
     );
 
     if (result == null) return null;
