@@ -39,6 +39,7 @@ enum SyncAction {
 ///   its content is copied, or its deletion is applied.
 /// - With equal timestamps a deletion wins over an edit, and two live copies
 ///   are treated as equal.
+/// - Two tombstones need nothing, whatever their timestamps.
 class SyncPlanner {
   const SyncPlanner._();
 
@@ -69,6 +70,9 @@ class SyncPlanner {
     if (local == null) {
       return remote.deleted ? null : SyncAction.pullToLocal;
     }
+
+    // Both sides already agree that the item is gone.
+    if (local.deleted && remote.deleted) return null;
 
     if (local.updatedAt > remote.updatedAt) {
       return local.deleted ? SyncAction.deleteRemote : SyncAction.pushToRemote;
