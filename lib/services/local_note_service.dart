@@ -1,19 +1,24 @@
 import 'package:sqflite/sqflite.dart';
 import '../models/note.dart';
+import '../utils/sync_planner.dart';
 import 'database_helper.dart';
 
 class LocalNoteService {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
+  /// How long a deletion is kept (as a tombstone) so that it can still be
+  /// sent to the other side of the sync.
+  static const Duration tombstoneRetention = Duration(days: 30);
+
   Future<List<Note>> getNotes({String? category, String sort = 'new'}) async {
     final db = await _dbHelper.database;
     String orderBy =
         sort == 'new' ? 'updated_timestamp DESC' : 'updated_timestamp ASC';
-    String? where;
-    List<dynamic>? whereArgs;
+    var where = 'deleted = 0';
+    final whereArgs = <Object?>[];
     if (category != null && category != 'all') {
-      where = 'category_id = ?';
-      whereArgs = [category];
+      where += ' AND category_id = ?';
+      whereArgs.add(category);
     }
     final List<Map<String, dynamic>> maps = await db.query(
       'notes',
@@ -28,7 +33,7 @@ class LocalNoteService {
     final db = await _dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'notes',
-      where: 'id = ?',
+      where: 'id = ? AND deleted = 0',
       whereArgs: [id],
     );
     if (maps.isNotEmpty) {
@@ -56,12 +61,48 @@ class LocalNoteService {
     );
   }
 
+  /// Marks the note as deleted instead of removing the row, so that the
+  /// deletion can be synced. The note disappears from every list.
   Future<void> deleteNote(String id) async {
     final db = await _dbHelper.database;
-    await db.delete(
+    await db.update(
       'notes',
+      {
+        'deleted': 1,
+        'updated_timestamp': DateTime.now().millisecondsSinceEpoch,
+      },
       where: 'id = ?',
       whereArgs: [id],
+    );
+  }
+
+  /// Id, change time and deletion flag of every note, tombstones included.
+  Future<List<SyncEntry>> getSyncEntries() async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
+      'notes',
+      columns: ['id', 'updated_timestamp', 'deleted'],
+    );
+    return [
+      for (final row in rows)
+        SyncEntry(
+          row['id'] as String,
+          (row['updated_timestamp'] as num).toInt(),
+          deleted: (row['deleted'] as num).toInt() == 1,
+        ),
+    ];
+  }
+
+  /// Removes tombstones older than [tombstoneRetention]. Returns how many.
+  Future<int> purgeTombstones({DateTime? now}) async {
+    final db = await _dbHelper.database;
+    final limit = (now ?? DateTime.now())
+        .subtract(tombstoneRetention)
+        .millisecondsSinceEpoch;
+    return db.delete(
+      'notes',
+      where: 'deleted = 1 AND updated_timestamp < ?',
+      whereArgs: [limit],
     );
   }
 
