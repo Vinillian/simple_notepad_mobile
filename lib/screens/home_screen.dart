@@ -368,8 +368,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const SnackBar(content: Text('Синхронизация завершена')),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Sync failed: $e');
+      debugPrintStack(stackTrace: stackTrace, maxFrames: 8);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

@@ -22,6 +22,17 @@ class NotesNotifier extends _$NotesNotifier {
     return await _localService.getNotes(category: category, sort: sort);
   }
 
+  /// Recomputes the note counts of the categories.
+  ///
+  /// [categoryNotesCountProvider] watches the notifier with no category and
+  /// the default sort. That notifier must not invalidate it: Riverpod treats
+  /// it as a circular dependency (a debug-mode error). It does not need to,
+  /// because every change of its state already rebuilds the counts.
+  void _invalidateCategoryCounts() {
+    if (category == null && sort == 'new') return;
+    ref.invalidate(categoryNotesCountProvider);
+  }
+
   Future<void> refresh({String? category, String sort = 'new'}) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _fetchLocalNotes(category, sort));
@@ -30,21 +41,21 @@ class NotesNotifier extends _$NotesNotifier {
   Future<void> addNote(Note note) async {
     await _localService.createNote(note);
     await refresh(category: category, sort: sort);
-    ref.invalidate(categoryNotesCountProvider);
+    _invalidateCategoryCounts();
     _syncNoteToRemote(note);
   }
 
   Future<void> updateNote(String id, Note note) async {
     await _localService.updateNote(note);
     await refresh(category: category, sort: sort);
-    ref.invalidate(categoryNotesCountProvider);
+    _invalidateCategoryCounts();
     _updateNoteRemote(note);
   }
 
   Future<void> deleteNote(String id) async {
     await _localService.deleteNote(id);
     await refresh(category: category, sort: sort);
-    ref.invalidate(categoryNotesCountProvider);
+    _invalidateCategoryCounts();
     _deleteNoteRemote(id);
   }
 
@@ -98,7 +109,7 @@ class NotesNotifier extends _$NotesNotifier {
     }
     await _localService.purgeTombstones();
 
-    ref.invalidate(categoryNotesCountProvider);
+    _invalidateCategoryCounts();
 
     state = AsyncValue.data(await _localService.getNotes(
         category: currentCategory, sort: currentSort));
