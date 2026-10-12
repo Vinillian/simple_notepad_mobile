@@ -63,15 +63,12 @@ class NotesNotifier extends _$NotesNotifier {
     final currentSort = sort;
 
     final localEntries = await _localService.getSyncEntries();
-    final remoteNotes = await _remoteService.getNotes();
-    final remoteById = {for (final n in remoteNotes) n.id: n};
-    final remoteEntries = [
-      for (final n in remoteNotes) SyncEntry(n.id, n.updatedTimestamp),
-    ];
+    final remote = await _remoteService.getSnapshot();
+    final remoteIds = remote.knownIds;
 
     final actions = SyncPlanner.plan(
       local: localEntries,
-      remote: remoteEntries,
+      remote: remote.entries,
     );
 
     final toPull = <Note>[];
@@ -81,14 +78,14 @@ class NotesNotifier extends _$NotesNotifier {
         case SyncAction.pushToRemote:
           final localNote = await _localService.getNoteById(id);
           if (localNote != null) {
-            if (remoteById.containsKey(id)) {
+            if (remoteIds.contains(id)) {
               await _remoteService.updateNote(id, localNote);
             } else {
               await _remoteService.createNote(localNote);
             }
           }
         case SyncAction.pullToLocal:
-          final remoteNote = remoteById[id];
+          final remoteNote = remote.liveNotes[id];
           if (remoteNote != null) toPull.add(remoteNote);
         case SyncAction.deleteRemote:
           await _remoteService.deleteNote(id);

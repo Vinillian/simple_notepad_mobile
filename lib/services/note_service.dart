@@ -1,4 +1,5 @@
 import '../models/note.dart';
+import '../models/remote_notes_snapshot.dart';
 import 'api_client.dart';
 
 class NoteService {
@@ -13,6 +14,12 @@ class NoteService {
     }
     final data = await _apiClient.get(endpoint);
     return (data as List).map((json) => Note.fromJson(json)).toList();
+  }
+
+  /// Every note on the server, deleted ones included, for the sync.
+  Future<RemoteNotesSnapshot> getSnapshot() async {
+    final data = await _apiClient.get('/notes?include_deleted=1');
+    return RemoteNotesSnapshot.fromJson(data as List);
   }
 
   Future<Note> getNoteById(String id) async {
