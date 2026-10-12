@@ -3,7 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../models/note.dart';
 import '../services/local_note_service.dart';
 import '../services/note_service.dart';
-import '../utils/merge_helper.dart';
+import '../utils/sync_planner.dart';
 import 'categories_provider.dart';
 
 part 'notes_provider.g.dart';
@@ -48,7 +48,13 @@ class NotesNotifier extends _$NotesNotifier {
     _deleteNoteRemote(id);
   }
 
-  /// Merges local and remote notes.
+  /// Syncs notes with the server; the last write wins.
+  ///
+  /// Edits and deletions go both ways: for every id the copy with the later
+  /// `updatedTimestamp` wins (see [SyncPlanner]). A note deleted on this device
+  /// is deleted on the server too, and a newer edit on the server replaces the
+  /// local copy. A deletion made on the server is not noticed yet, because the
+  /// server does not keep deleted notes.
   ///
   /// Network errors are rethrown to the caller and do not touch [state], so a
   /// failed sync never replaces the local list with an error.
@@ -56,24 +62,44 @@ class NotesNotifier extends _$NotesNotifier {
     final currentCategory = category;
     final currentSort = sort;
 
-    final localNotes = await _localService.getNotes();
+    final localEntries = await _localService.getSyncEntries();
     final remoteNotes = await _remoteService.getNotes();
+    final remoteById = {for (final n in remoteNotes) n.id: n};
+    final remoteEntries = [
+      for (final n in remoteNotes) SyncEntry(n.id, n.updatedTimestamp),
+    ];
 
-    final toAddToRemote = MergeHelper.findNewNotes(
-      current: remoteNotes,
-      imported: localNotes,
+    final actions = SyncPlanner.plan(
+      local: localEntries,
+      remote: remoteEntries,
     );
-    for (final note in toAddToRemote) {
-      await _remoteService.createNote(note);
-    }
 
-    final toAddToLocal = MergeHelper.findNewNotes(
-      current: localNotes,
-      imported: remoteNotes,
-    );
-    if (toAddToLocal.isNotEmpty) {
-      await _localService.insertAll(toAddToLocal);
+    final toPull = <Note>[];
+    for (final entry in actions.entries) {
+      final id = entry.key;
+      switch (entry.value) {
+        case SyncAction.pushToRemote:
+          final localNote = await _localService.getNoteById(id);
+          if (localNote != null) {
+            if (remoteById.containsKey(id)) {
+              await _remoteService.updateNote(id, localNote);
+            } else {
+              await _remoteService.createNote(localNote);
+            }
+          }
+        case SyncAction.pullToLocal:
+          final remoteNote = remoteById[id];
+          if (remoteNote != null) toPull.add(remoteNote);
+        case SyncAction.deleteRemote:
+          await _remoteService.deleteNote(id);
+        case SyncAction.deleteLocal:
+          await _localService.deleteNote(id);
+      }
     }
+    if (toPull.isNotEmpty) {
+      await _localService.insertAll(toPull);
+    }
+    await _localService.purgeTombstones();
 
     ref.invalidate(categoryNotesCountProvider);
 
