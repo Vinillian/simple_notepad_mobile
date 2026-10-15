@@ -50,6 +50,15 @@ class CategoriesNotifier extends _$CategoriesNotifier {
     _syncCategoryToRemote(category, updatedAt);
   }
 
+  /// Saves the new name and colour of a category, then sends them to the
+  /// server. If the request fails, the next sync sends the change, because
+  /// the local change time is newer.
+  Future<void> updateCategory(Category category) async {
+    final updatedAt = await _localService.updateCategory(category);
+    await refresh();
+    _pushCategoryUpdate(category, updatedAt);
+  }
+
   Future<void> deleteCategory(String id) async {
     await _localService.deleteCategory(id);
     await refresh();
@@ -147,6 +156,14 @@ class CategoriesNotifier extends _$CategoriesNotifier {
       await _remoteService.createCategory(category, updatedAt: updatedAt);
     } catch (e) {
       foundation.debugPrint('_syncCategoryToRemote error: $e');
+    }
+  }
+
+  Future<void> _pushCategoryUpdate(Category category, int updatedAt) async {
+    try {
+      await _remoteService.updateCategory(category, updatedAt: updatedAt);
+    } catch (e) {
+      foundation.debugPrint('_pushCategoryUpdate error: $e');
     }
   }
 

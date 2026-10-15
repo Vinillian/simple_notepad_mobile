@@ -27,8 +27,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   Future<void> _createCategory() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final colorHex =
-        '#${_selectedColor.toARGB32().toRadixString(16).substring(2, 8).toUpperCase()}';
+    final colorHex = colorToHex(_selectedColor);
 
     final newCategory = Category(
       id: 'cat_${DateTime.now().millisecondsSinceEpoch}',
@@ -46,6 +45,43 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         setState(() => _selectedColor = Colors.green);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Категория создана')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e')),
+        );
+      }
+    }
+  }
+
+  /// Whether another category already has this name (ignoring case).
+  bool _isNameTaken(String name, {String? exceptId}) {
+    final categories =
+        ref.read(categoriesNotifierProvider).valueOrNull ?? const <Category>[];
+    final lower = name.trim().toLowerCase();
+    return categories
+        .any((c) => c.id != exceptId && c.name.toLowerCase() == lower);
+  }
+
+  Future<void> _editCategory(Category category) async {
+    final edited = await showDialog<Category>(
+      context: context,
+      builder: (ctx) => EditCategoryDialog(
+        category: category,
+        isNameTaken: (name) => _isNameTaken(name, exceptId: category.id),
+      ),
+    );
+    if (edited == null) return;
+
+    try {
+      await ref
+          .read(categoriesNotifierProvider.notifier)
+          .updateCategory(edited);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Категория сохранена')),
         );
       }
     } catch (e) {
@@ -155,6 +191,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                           if (value == null || value.trim().isEmpty) {
                             return 'Введите название';
                           }
+                          if (_isNameTaken(value)) {
+                            return 'Категория с таким названием уже существует';
+                          }
                           return null;
                         },
                       ),
@@ -235,12 +274,24 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                         title: Text(cat.name),
                         subtitle: Text(
                             cat.custom == 1 ? 'Пользовательская' : 'Системная'),
+                        onTap: cat.custom == 1 ? () => _editCategory(cat) : null,
                         trailing: cat.custom == 1
-                            ? IconButton(
-                          icon:
-                          const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteCategory(cat),
-                        )
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Изменить',
+                                    icon: const Icon(Icons.edit),
+                                    onPressed: () => _editCategory(cat),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Удалить',
+                                    icon: const Icon(Icons.delete,
+                                        color: Colors.red),
+                                    onPressed: () => _deleteCategory(cat),
+                                  ),
+                                ],
+                              )
                             : null,
                       );
                     },
@@ -319,6 +370,136 @@ class SimpleColorPicker extends StatelessWidget {
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Отмена'),
+        ),
+      ],
+    );
+  }
+}
+
+/// `#RRGGBB` for a color, the way categories store it.
+String colorToHex(Color color) =>
+    '#${color.toARGB32().toRadixString(16).substring(2, 8).toUpperCase()}';
+
+/// Dialog to rename a category and change its color. Closes with the changed
+/// copy of the category, or with null when nothing was changed or the dialog
+/// was cancelled.
+class EditCategoryDialog extends StatefulWidget {
+  final Category category;
+
+  /// Tells whether another category already has the given name.
+  final bool Function(String name) isNameTaken;
+
+  const EditCategoryDialog({
+    super.key,
+    required this.category,
+    required this.isNameTaken,
+  });
+
+  @override
+  State<EditCategoryDialog> createState() => _EditCategoryDialogState();
+}
+
+class _EditCategoryDialogState extends State<EditCategoryDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController =
+      TextEditingController(text: widget.category.name);
+  late Color _color = hexToColor(widget.category.color);
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickColor() async {
+    final color = await showDialog<Color>(
+      context: context,
+      builder: (ctx) => SimpleColorPicker(initialColor: _color),
+    );
+    if (color != null) setState(() => _color = color);
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+    final name = _nameController.text.trim();
+    final colorHex = colorToHex(_color);
+    final unchanged = name == widget.category.name &&
+        colorHex == widget.category.color.toUpperCase();
+    if (unchanged) {
+      Navigator.pop(context);
+      return;
+    }
+    Navigator.pop(
+      context,
+      Category(
+        id: widget.category.id,
+        name: name,
+        color: colorHex,
+        custom: widget.category.custom,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Редактировать категорию'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Название',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Введите название';
+                  }
+                  if (widget.isNameTaken(value)) {
+                    return 'Категория с таким названием уже существует';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: _color,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.grey),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _pickColor,
+                      child: const Text('Выбрать цвет'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Отмена'),
+        ),
+        TextButton(
+          onPressed: _save,
+          child: const Text('Сохранить'),
         ),
       ],
     );
