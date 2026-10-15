@@ -9,9 +9,13 @@ class LocalCategoryService {
 
   Future<List<Category>> getCategories() async {
     final db = await _dbHelper.database;
+    // rowid is the order in which the categories were created. Rows are
+    // updated in place, never deleted and inserted again, so a category
+    // keeps its place in the list when it is renamed or recoloured.
     final List<Map<String, dynamic>> maps = await db.query(
       'categories',
       where: 'deleted = 0',
+      orderBy: 'rowid',
     );
     return List.generate(maps.length, (i) {
       return Category.fromJson(maps[i]);
@@ -41,17 +45,17 @@ class LocalCategoryService {
     return time;
   }
 
-  Future<void> updateCategory(Category category) async {
+  /// Saves the new name and colour of a category and returns its change time.
+  Future<int> updateCategory(Category category) async {
     final db = await _dbHelper.database;
+    final time = DateTime.now().millisecondsSinceEpoch;
     await db.update(
       'categories',
-      {
-        ...category.toJson(),
-        'updated_timestamp': DateTime.now().millisecondsSinceEpoch,
-      },
+      {...category.toJson(), 'updated_timestamp': time},
       where: 'id = ?',
       whereArgs: [category.id],
     );
+    return time;
   }
 
   /// Marks the category as deleted instead of removing the row, so that the
@@ -130,24 +134,31 @@ class LocalCategoryService {
 
   /// Saves categories that come from the server. [updatedAt] holds the change
   /// time to keep for each id; a category without one gets the current time.
+  ///
+  /// A category that is already here is updated in place (a deleted one is
+  /// brought back), so it keeps its place in the list; only a new id adds a
+  /// row.
   Future<void> insertAll(
     List<Category> categories, {
     Map<String, int>? updatedAt,
   }) async {
     final db = await _dbHelper.database;
     final now = DateTime.now().millisecondsSinceEpoch;
-    Batch batch = db.batch();
-    for (var cat in categories) {
-      batch.insert(
-        'categories',
-        {
+    await db.transaction((txn) async {
+      for (final cat in categories) {
+        final values = {
           ...cat.toJson(),
           'updated_timestamp': updatedAt?[cat.id] ?? now,
           'deleted': 0,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-    }
-    await batch.commit();
+        };
+        final updated = await txn.update(
+          'categories',
+          values,
+          where: 'id = ?',
+          whereArgs: [cat.id],
+        );
+        if (updated == 0) await txn.insert('categories', values);
+      }
+    });
   }
 }
