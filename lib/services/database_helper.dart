@@ -43,10 +43,12 @@ class DatabaseHelper {
     String path = join(documentsDirectory.path, 'notepad.db');
     return await openDatabase(
       path,
+      // v6: categories have `updated_timestamp` and `deleted` too (a deleted
+      // category stays as a tombstone so that the deletion can be synced);
       // v5: notes have a `deleted` flag (a deleted note stays as a tombstone
       // so that the deletion can be synced); v4: note ids are TEXT;
       // v3: добавлена таблица app_meta
-      version: 5,
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -58,7 +60,9 @@ class DatabaseHelper {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         color TEXT NOT NULL,
-        custom INTEGER NOT NULL
+        custom INTEGER NOT NULL,
+        updated_timestamp INTEGER NOT NULL DEFAULT 0,
+        deleted INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
@@ -108,6 +112,29 @@ class DatabaseHelper {
     }
     if (oldVersion < 5) {
       await _addDeletedColumn(db);
+    }
+    if (oldVersion < 6) {
+      await _addCategorySyncColumns(db);
+    }
+  }
+
+  /// v6: adds `updated_timestamp` and `deleted` to categories. Existing
+  /// categories get 0 for the change time (like the server does), so any
+  /// later change or deletion, on either side, wins over them.
+  Future<void> _addCategorySyncColumns(Database db) async {
+    final columns = await db.rawQuery('PRAGMA table_info(categories)');
+    final names = columns.map((c) => c['name']).toSet();
+    if (!names.contains('updated_timestamp')) {
+      await db.execute(
+        'ALTER TABLE categories ADD COLUMN '
+        'updated_timestamp INTEGER NOT NULL DEFAULT 0',
+      );
+    }
+    if (!names.contains('deleted')) {
+      await db.execute(
+        'ALTER TABLE categories ADD COLUMN '
+        'deleted INTEGER NOT NULL DEFAULT 0',
+      );
     }
   }
 

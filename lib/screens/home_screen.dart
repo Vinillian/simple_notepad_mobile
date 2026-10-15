@@ -361,6 +361,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           notesNotifierProvider(category: selectedCategory, sort: sortOrder)
               .notifier)
           .syncWithRemote();
+      // Again: the server deletes a category only after its notes are gone,
+      // which the notes sync has just done.
+      await ref.read(categoriesNotifierProvider.notifier).syncWithRemote();
       await ref.read(settingsNotifierProvider.notifier).syncWithRemote();
 
       if (mounted) {
