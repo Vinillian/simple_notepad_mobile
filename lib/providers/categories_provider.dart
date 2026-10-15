@@ -4,7 +4,7 @@ import '../models/category.dart';
 import '../services/local_category_service.dart';
 import '../services/local_note_service.dart';
 import '../services/category_service.dart';
-import '../utils/merge_helper.dart';
+import '../utils/sync_planner.dart';
 import 'notes_provider.dart';
 
 part 'categories_provider.g.dart';
@@ -45,9 +45,9 @@ class CategoriesNotifier extends _$CategoriesNotifier {
   }
 
   Future<void> addCategory(Category category) async {
-    await _localService.createCategory(category);
+    final updatedAt = await _localService.createCategory(category);
     await refresh();
-    _syncCategoryToRemote(category);
+    _syncCategoryToRemote(category, updatedAt);
   }
 
   Future<void> deleteCategory(String id) async {
@@ -56,39 +56,95 @@ class CategoriesNotifier extends _$CategoriesNotifier {
     _deleteCategoryFromRemote(id);
   }
 
-  /// Merges local and remote categories.
+  /// Syncs categories with the server; the last write wins.
+  ///
+  /// For every id the copy with the later change time wins (see
+  /// [SyncPlanner]): a category created, changed or deleted on one side is
+  /// created, changed or deleted on the other. Deletions are kept as
+  /// tombstones on both sides, so a deleted category does not come back.
+  ///
+  /// The server refuses to delete a category that still has notes, and the
+  /// notes of a deleted category are only deleted on the server by the notes
+  /// sync, which runs after this one. Such a deletion is therefore left for
+  /// the next run (the home screen runs this sync again after the notes).
+  /// A category deleted on the server that still has notes on this device is
+  /// kept and sent to the server again, so those notes keep their category.
   ///
   /// Network errors are rethrown to the caller and do not touch [state], so a
   /// failed sync never replaces the local list with an error.
   Future<void> syncWithRemote() async {
-    final localCategories = await _localService.getCategories();
-    final remoteCategories = await _remoteService.getCategories();
+    final localEntries = await _localService.getSyncEntries();
+    final remote = await _remoteService.getSnapshot();
+    final remoteIds = remote.knownIds;
+    final remoteUpdatedAt = remote.updatedAtById;
+    final localUpdatedAt = {for (final e in localEntries) e.id: e.updatedAt};
 
-    final toAddToRemote = MergeHelper.findNewCategories(
-      current: remoteCategories,
-      imported: localCategories,
+    final actions = SyncPlanner.plan(
+      local: localEntries,
+      remote: remote.entries,
     );
-    for (final cat in toAddToRemote) {
-      await _remoteService.createCategory(cat);
-    }
 
-    final toAddToLocal = MergeHelper.findNewCategories(
-      current: localCategories,
-      imported: remoteCategories,
-    );
-    if (toAddToLocal.isNotEmpty) {
-      await _localService.insertAll(toAddToLocal);
+    final toPull = <Category>[];
+    for (final entry in actions.entries) {
+      final id = entry.key;
+      switch (entry.value) {
+        case SyncAction.pushToRemote:
+          final localCategory = await _localService.getCategoryById(id);
+          if (localCategory != null) {
+            await _pushCategory(
+              localCategory,
+              localUpdatedAt[id] ?? 0,
+              existsOnServer: remoteIds.contains(id),
+            );
+          }
+        case SyncAction.pullToLocal:
+          final remoteCategory = remote.liveCategories[id];
+          if (remoteCategory != null) toPull.add(remoteCategory);
+        case SyncAction.deleteRemote:
+          try {
+            await _remoteService.deleteCategory(id);
+          } catch (e) {
+            foundation.debugPrint('Category $id is not deleted on the server '
+                'yet, will retry on the next sync: $e');
+          }
+        case SyncAction.deleteLocal:
+          final categoryToDelete = await _localService.getCategoryById(id);
+          if (categoryToDelete == null) break;
+          if (await _localService.hasLiveNotes(id)) {
+            final now = DateTime.now().millisecondsSinceEpoch;
+            await _localService.setUpdatedTimestamp(id, now);
+            await _pushCategory(categoryToDelete, now, existsOnServer: true);
+          } else {
+            await _localService.deleteCategory(id);
+          }
+      }
     }
+    if (toPull.isNotEmpty) {
+      await _localService.insertAll(toPull, updatedAt: remoteUpdatedAt);
+    }
+    await _localService.purgeTombstones();
 
     ref.invalidate(categoryNotesCountProvider);
     state = AsyncValue.data(await _localService.getCategories());
   }
 
+  Future<void> _pushCategory(
+    Category category,
+    int updatedAt, {
+    required bool existsOnServer,
+  }) async {
+    if (existsOnServer) {
+      await _remoteService.updateCategory(category, updatedAt: updatedAt);
+    } else {
+      await _remoteService.createCategory(category, updatedAt: updatedAt);
+    }
+  }
+
   /// Sends a new category to the server in a single request, without
   /// downloading the whole list first. A failure is only logged.
-  Future<void> _syncCategoryToRemote(Category category) async {
+  Future<void> _syncCategoryToRemote(Category category, int updatedAt) async {
     try {
-      await _remoteService.createCategory(category);
+      await _remoteService.createCategory(category, updatedAt: updatedAt);
     } catch (e) {
       foundation.debugPrint('_syncCategoryToRemote error: $e');
     }
