@@ -6,6 +6,7 @@ import '../services/local_note_service.dart';
 import '../services/category_service.dart';
 import '../utils/sync_planner.dart';
 import 'notes_provider.dart';
+import 'sync_status_provider.dart';
 
 part 'categories_provider.g.dart';
 
@@ -152,26 +153,32 @@ class CategoriesNotifier extends _$CategoriesNotifier {
   /// Sends a new category to the server in a single request, without
   /// downloading the whole list first. A failure is only logged.
   Future<void> _syncCategoryToRemote(Category category, int updatedAt) async {
+    final pending = ref.read(syncPendingProvider.notifier);
     try {
       await _remoteService.createCategory(category, updatedAt: updatedAt);
     } catch (e) {
       foundation.debugPrint('_syncCategoryToRemote error: $e');
+      await pending.markPending();
     }
   }
 
   Future<void> _pushCategoryUpdate(Category category, int updatedAt) async {
+    final pending = ref.read(syncPendingProvider.notifier);
     try {
       await _remoteService.updateCategory(category, updatedAt: updatedAt);
     } catch (e) {
       foundation.debugPrint('_pushCategoryUpdate error: $e');
+      await pending.markPending();
     }
   }
 
   Future<void> _deleteCategoryFromRemote(String id) async {
+    final pending = ref.read(syncPendingProvider.notifier);
     try {
       await _remoteService.deleteCategory(id);
     } catch (e) {
       foundation.debugPrint('_deleteCategoryFromRemote error: $e');
+      await pending.markPending();
     }
   }
 }

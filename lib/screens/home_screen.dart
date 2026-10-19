@@ -1,8 +1,13 @@
+import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/notes_provider.dart';
 import '../providers/categories_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/sync_status_provider.dart';
+import '../utils/sync_error.dart';
+import '../utils/sync_retry_policy.dart';
 import '../widgets/note_card.dart';
 import '../widgets/loading_indicator.dart';
 import 'note_edit_screen.dart';
@@ -28,16 +33,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
+  /// Retries of a failed sync (see [SyncRetryPolicy]).
+  Timer? _retryTimer;
+  int _retryAttempt = 0;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+
   @override
   void initState() {
     super.initState();
     _checkFirstRun();
+    // When the network comes back, send what could not be sent.
+    _connectivitySubscription =
+        Connectivity().onConnectivityChanged.listen((results) {
+      final online = results.any((r) => r != ConnectivityResult.none);
+      if (online && ref.read(syncPendingProvider) && !_isSyncing) {
+        _retryAttempt = 0;
+        _syncData(silent: true);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _connectivitySubscription?.cancel();
+    _retryTimer?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _scheduleRetry() {
+    if (_retryTimer?.isActive ?? false) return;
+    final delay = SyncRetryPolicy.delayFor(_retryAttempt);
+    if (delay == null) return;
+    _retryTimer = Timer(delay, () {
+      _retryAttempt++;
+      if (mounted && !_isSyncing && ref.read(syncPendingProvider)) {
+        _syncData(silent: true);
+      }
+    });
+  }
+
+  void _cancelRetry() {
+    _retryTimer?.cancel();
+    _retryAttempt = 0;
   }
 
   /// Shows the welcome screen only on the very first launch.
@@ -65,15 +103,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       notesNotifierProvider(category: selectedCategory, sort: sortOrder),
     );
     final categoriesAsync = ref.watch(categoriesNotifierProvider);
+    final syncPending = ref.watch(syncPendingProvider);
+    // Changes that are not on the server yet: try again after a while.
+    ref.listen<bool>(syncPendingProvider, (previous, next) {
+      if (next) {
+        _scheduleRetry();
+      } else {
+        _cancelRetry();
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Мои заметки'),
         actions: [
           IconButton(
-            icon: Icon(_isSyncing ? Icons.sync_disabled : Icons.sync),
-            onPressed: _isSyncing ? null : _syncData,
-            tooltip: 'Синхронизировать с сервером',
+            icon: Icon(
+              _isSyncing
+                  ? Icons.sync_disabled
+                  : (syncPending ? Icons.sync_problem : Icons.sync),
+              color: syncPending && !_isSyncing ? Colors.orange : null,
+            ),
+            onPressed: _isSyncing ? null : () => _syncData(),
+            tooltip: syncPending
+                ? 'Есть изменения, не отправленные на сервер. Нажмите, чтобы повторить'
+                : 'Синхронизировать с сервером',
           ),
           IconButton(
             icon: const Icon(Icons.category),
@@ -352,7 +406,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Future<void> _syncData() async {
+  /// Syncs with the server. A [silent] run (the automatic retry) shows a
+  /// message only when it has sent the waiting changes.
+  Future<void> _syncData({bool silent = false}) async {
+    if (_isSyncing) return;
+    if (!silent) _cancelRetry();
     setState(() => _isSyncing = true);
     try {
       await ref.read(categoriesNotifierProvider.notifier).syncWithRemote();
@@ -366,20 +424,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref.read(categoriesNotifierProvider.notifier).syncWithRemote();
       await ref.read(settingsNotifierProvider.notifier).syncWithRemote();
 
+      if (!mounted) return;
+      final hadPending = ref.read(syncPendingProvider);
+      await ref.read(syncPendingProvider.notifier).clear();
+      _retryAttempt = 0;
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Синхронизация завершена')),
+          SnackBar(
+            content: Text(silent && hadPending
+                ? 'Изменения отправлены на сервер'
+                : 'Синхронизация завершена'),
+          ),
         );
       }
     } catch (e, stackTrace) {
       debugPrint('Sync failed: $e');
       debugPrintStack(stackTrace: stackTrace, maxFrames: 8);
-      if (mounted) {
+      if (!mounted) return;
+      await ref.read(syncPendingProvider.notifier).markPending();
+      _scheduleRetry();
+      if (mounted && !silent) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Не удалось синхронизировать: сервер недоступен. '
-              'Локальные заметки не изменены.',
+              'Не удалось синхронизировать: ${describeSyncError(e)}. '
+              'Локальные заметки не изменены, повторю позже.',
             ),
           ),
         );

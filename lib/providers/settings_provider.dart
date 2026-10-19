@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../models/settings.dart';
 import '../services/local_settings_service.dart';
 import '../services/settings_service.dart';
+import 'sync_status_provider.dart';
 
 part 'settings_provider.g.dart';
 
@@ -46,10 +47,12 @@ class SettingsNotifier extends _$SettingsNotifier {
   }
 
   Future<void> _syncSettingsToRemote(Settings settings) async {
+    final pending = ref.read(syncPendingProvider.notifier);
     try {
       await _remoteService.updateSettings(settings);
     } catch (e) {
       foundation.debugPrint('_syncSettingsToRemote error: $e');
+      await pending.markPending();
     }
   }
 }

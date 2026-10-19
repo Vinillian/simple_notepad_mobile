@@ -5,6 +5,7 @@ import '../services/local_note_service.dart';
 import '../services/note_service.dart';
 import '../utils/sync_planner.dart';
 import 'categories_provider.dart';
+import 'sync_status_provider.dart';
 
 part 'notes_provider.g.dart';
 
@@ -119,26 +120,32 @@ class NotesNotifier extends _$NotesNotifier {
   /// the whole list first. A failure, including an id the server already has,
   /// is only logged: the note is safe locally.
   Future<void> _syncNoteToRemote(Note note) async {
+    final pending = ref.read(syncPendingProvider.notifier);
     try {
       await _remoteService.createNote(note);
     } catch (e) {
       foundation.debugPrint('_syncNoteToRemote error: $e');
+      await pending.markPending();
     }
   }
 
   Future<void> _updateNoteRemote(Note note) async {
+    final pending = ref.read(syncPendingProvider.notifier);
     try {
       await _remoteService.updateNote(note.id, note);
     } catch (e) {
       foundation.debugPrint('_updateNoteRemote error: $e');
+      await pending.markPending();
     }
   }
 
   Future<void> _deleteNoteRemote(String id) async {
+    final pending = ref.read(syncPendingProvider.notifier);
     try {
       await _remoteService.deleteNote(id);
     } catch (e) {
       foundation.debugPrint('_deleteNoteRemote error: $e');
+      await pending.markPending();
     }
   }
 }

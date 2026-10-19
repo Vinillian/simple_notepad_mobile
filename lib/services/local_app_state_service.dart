@@ -16,6 +16,10 @@ class LocalAppStateService implements ServerUrlStorage {
   /// Key in the `app_meta` table for the custom server address.
   static const String serverUrlKey = 'server_url';
 
+  /// Key in the `app_meta` table that is set while local changes may not have
+  /// reached the server yet.
+  static const String syncPendingKey = 'sync_pending';
+
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
   Future<String?> _getValue(String key) async {
@@ -62,5 +66,15 @@ class LocalAppStateService implements ServerUrlStorage {
   Future<void> setServerUrl(String? url) {
     if (url == null || url.isEmpty) return _deleteValue(serverUrlKey);
     return _setValue(serverUrlKey, url);
+  }
+
+  /// Whether a change could not be sent to the server, or a sync failed, and
+  /// no sync has succeeded since.
+  Future<bool> isSyncPending() async {
+    return await _getValue(syncPendingKey) == '1';
+  }
+
+  Future<void> setSyncPending(bool pending) {
+    return pending ? _setValue(syncPendingKey, '1') : _deleteValue(syncPendingKey);
   }
 }
